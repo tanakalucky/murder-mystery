@@ -73,6 +73,7 @@
       ]
     },
     "JavaScript": {
+      "language_servers": ["typescript-ls", "!vtsls", "..."],
       "format_on_save": "on",
       "prettier": {
         "allowed": false
@@ -87,6 +88,7 @@
       "code_action": "source.fixAll.oxc"
     },
     "JSX": {
+      "language_servers": ["typescript-ls", "!vtsls", "..."],
       "format_on_save": "on",
       "prettier": {
         "allowed": false
@@ -191,6 +193,7 @@
       ]
     },
     "TypeScript": {
+      "language_servers": ["typescript-ls", "!vtsls", "..."],
       "format_on_save": "on",
       "prettier": {
         "allowed": false
@@ -204,6 +207,7 @@
       ]
     },
     "TSX": {
+      "language_servers": ["typescript-ls", "!vtsls", "..."],
       "format_on_save": "on",
       "prettier": {
         "allowed": false
