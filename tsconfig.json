@@ -4,6 +4,12 @@
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "allowImportingTsExtensions": true,
-    "esModuleInterop": true
-  }
+    "esModuleInterop": true,
+    "skipLibCheck": true
+  },
+  // Root-level config files only. Every workspace package owns its own tsconfig,
+  // so without this the root project would also claim apps/ and packages/ sources
+  // and type check them without `jsx` or the DOM lib.
+  "include": ["*.ts"],
+  "exclude": ["node_modules", "apps", "packages", "tools"]
 }
