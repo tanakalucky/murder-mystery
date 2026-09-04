@@ -6,6 +6,9 @@
   "scripts": {
     "ready": "vp check && vp run -r test && vp run -r build",
     "dev": "vp run website#dev",
+    "build": "vp run -r build",
+    "ui": "vp run --no-cache --filter=@repo/ui ui",
+    "ui:website": "vp run --no-cache --filter=website ui",
     "prepare": "vp config"
   },
   "devDependencies": {
