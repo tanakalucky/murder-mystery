@@ -2,7 +2,7 @@ import { Button } from "@repo/ui/components/button";
 import { useTheme } from "@repo/ui/lib/theme-provider";
 import { MoonIcon, SunIcon } from "lucide-react";
 
-export function ThemeToggle() {
+export const ThemeToggle = () => {
   const { resolvedTheme, setTheme } = useTheme();
 
   return (
@@ -15,4 +15,4 @@ export function ThemeToggle() {
       {resolvedTheme === "dark" ? <SunIcon /> : <MoonIcon />}
     </Button>
   );
-}
+};

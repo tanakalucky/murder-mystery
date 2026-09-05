@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      # Vite+ 本体・Node・pnpm のセットアップ、依存キャッシュ、`vp install` まで
+      # まとめて行う（`run-install` の既定が true）。
+      - uses: voidzero-dev/setup-vp@v1.19.0
+        with:
+          node-version: "24"
+          cache: true
+
+      - name: Check
+        run: vp check
+
+      - name: Resolve the Playwright version
+        id: playwright
+        shell: bash
+        run: |
+          version=$(vp -C apps/pdf-manager exec playwright --version | grep -oP 'Version \K[\d.]+')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.playwright.outputs.version }}
+          restore-keys: ${{ runner.os }}-playwright-
+
+      # ブラウザ本体は復元済みでも、キャッシュキーが前方一致で当たっただけの場合は
+      # バージョンがずれているため、install を通して必要分だけ取得する
+      - name: Install the Playwright browsers
+        run: vp -C apps/pdf-manager exec playwright install chromium
+
+      - name: Test
+        run: vp run -r test
+
+      - name: Build
+        run: vp run -r build

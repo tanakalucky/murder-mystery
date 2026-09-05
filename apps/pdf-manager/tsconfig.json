@@ -1,7 +1,7 @@
 {
   "extends": "@repo/tsconfig/react.json",
   "compilerOptions": {
-    "types": ["vite/client"],
+    "types": ["vite/client", "vite-plus/test/globals"],
     "paths": {
       // Only so the shadcn CLI can resolve `@repo/ui/*` when it writes files.
       "@repo/ui/*": ["../../packages/ui/*"]
