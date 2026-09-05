@@ -22,7 +22,7 @@ export const AppShell = () => {
   }, []);
 
   return (
-    <div className="flex min-h-full flex-col md:flex-row">
+    <div className="flex h-dvh flex-col md:flex-row">
       <header className="sticky top-0 z-50 flex items-center justify-between gap-3 bg-sidebar px-4 py-3 text-sidebar-foreground md:hidden">
         <span className="flex items-center gap-2 font-bold">
           <SearchCheck className="size-5" aria-hidden />
@@ -51,7 +51,7 @@ export const AppShell = () => {
         <SidebarNav onClose={() => drawerRef.current?.close()} />
       </dialog>
 
-      <main className="flex min-w-0 flex-1 flex-col">
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
         <Outlet />
       </main>
     </div>
