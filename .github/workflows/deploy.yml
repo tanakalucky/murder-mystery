@@ -138,8 +138,9 @@ jobs:
               "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER"
           )
 
+          # 既にある Worker は 200 とは限らない（本文を返さず 204 になることがある）
           case "$status" in
-            200)
+            2??)
               vp -C "$APP" exec wrangler versions upload --preview-alias "$ALIAS" | tee deploy.log
               summarize "$APP のプレビュー \`$ALIAS\`"
               ;;
