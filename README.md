@@ -27,7 +27,6 @@ A Vite+ monorepo with React 19, Tailwind CSS v4 and shadcn/ui.
 | `apps/pdf-manager` | `pdf-manager`    | PDF Manager — React SPA、Cloudflare Workers (Static Assets) 配信         |
 | `apps/memo`        | `memo`           | Murder Mystery Memo — React SPA、Cloudflare Workers (Static Assets) 配信 |
 | `packages/ui`      | `@repo/ui`       | shadcn/ui components, Tailwind entrypoint, theme provider                |
-| `packages/utils`   | `utils`          | Library built with `vp pack`                                             |
 | `tools/tsconfig`   | `@repo/tsconfig` | Shared `tsconfig` bases                                                  |
 
 ## Development
