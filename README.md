@@ -170,6 +170,10 @@ vp -C apps/memo test
   **アプリを増やすときにやることは `apps/` にディレクトリを作ることだけ。**
 - プレビューの別名はブランチ名から作る。長さの上限は `dist/wrangler.json` の Worker 名から
   アプリごとに計算する（ホスト名の 63 文字から Worker 名と区切りを引いた残り）。
+- プレビューに使う `wrangler versions upload` は既にある Worker にバージョンを載せるだけで、
+  Worker 自体は作れない。そのため PR ではデプロイ前に Cloudflare API へ Worker の有無を
+  問い合わせ、無ければ `wrangler deploy` で作る。新しいアプリの 1 回目だけこの経路を通り、
+  2 回目以降は通常どおりプレビューになる。
 - アプリが 3 つを超えたら、`deploy.yml` の `targets` ジョブを
   `pnpm --filter "...[<base>]" list --depth -1 --json` に差し替えて、変更されたパッケージと
   その波及先だけに絞る。pnpm が依存グラフから波及先を出すので、依存関係を YAML に書く必要はない。
