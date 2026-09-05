@@ -19,14 +19,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
 
-      # Vite+ 本体・Node・pnpm のセットアップと依存キャッシュをまとめて行う。
+      # Vite+ 本体・Node・pnpm のセットアップ、依存キャッシュ、`vp install` まで
+      # まとめて行う（`run-install` の既定が true）。
       - uses: voidzero-dev/setup-vp@v1.19.0
         with:
           node-version: "24"
           cache: true
-
-      - name: Install dependencies
-        run: vp install
 
       - name: Check
         run: vp check
