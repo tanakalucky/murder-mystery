@@ -31,22 +31,26 @@ catalog:
   vite-plus: 0.3.0
   vitest-browser-react: ^2.2.0
   wrangler: ^4.126.0
+
 overrides:
   vite@*: "catalog:"
   # Share the Vitest copy that `vite-plus` bundles, so the Playwright browser
   # provider and `vp test` never end up with two sets of Vitest internals.
   vitest: 4.1.11
+
 peerDependencyRules:
   allowAny:
     - vite
   allowedVersions:
     vite: "*"
+
 minimumReleaseAgeExclude:
   - "@base-ui/react@1.8.0"
   - "@base-ui/utils@0.4.0"
   - cn@0.2.5
   - lucide-react@1.41.0
   - shadcn@4.21.0
+
 allowBuilds:
   esbuild: true
   workerd: true
