@@ -1,0 +1,125 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# 本番デプロイは打ち切らない。プレビューは新しい push で置き換える。
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  targets:
+    name: Select the apps to deploy
+    runs-on: ubuntu-latest
+    outputs:
+      apps: ${{ steps.select.outputs.apps }}
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      # デプロイ対象は `wrangler.jsonc` を持つ apps/ 配下のパッケージ。アプリを
+      # 追加してもこのワークフローは変わらない。
+      #
+      # 3 つ目のアプリが入ったら、ここを
+      #   pnpm --filter "...[<base>]" list --depth -1 --json
+      # に差し替えて、変更されたパッケージとその波及先だけに絞る。pnpm が依存
+      # グラフから波及先を出すので、依存関係をこのファイルに書く必要はない。
+      - name: Select the apps
+        id: select
+        shell: bash
+        run: |
+          apps=$(
+            for config in apps/*/wrangler.jsonc; do
+              [ -e "$config" ] || continue
+              dirname "$config"
+            done |
+              sort |
+              python3 -c 'import json, sys; print(json.dumps([line.strip() for line in sys.stdin if line.strip()]))'
+          )
+          echo "apps=$apps" >> "$GITHUB_OUTPUT"
+          echo "Selected: $apps"
+
+  deploy:
+    name: ${{ matrix.app }}
+    needs: targets
+    if: >-
+      needs.targets.outputs.apps != '[]' &&
+      (github.event_name != 'pull_request' ||
+       github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'pull_request' && 'preview' || 'production' }}
+
+    strategy:
+      # 1 つのアプリのデプロイ失敗で、他のアプリを巻き添えにしない
+      fail-fast: false
+      matrix:
+        app: ${{ fromJson(needs.targets.outputs.apps) }}
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - uses: voidzero-dev/setup-vp@v1.19.0
+        with:
+          node-version: "24"
+          cache: true
+
+      - name: Install dependencies
+        run: vp install
+
+      - name: Build
+        run: vp -C "${{ matrix.app }}" build
+
+      # @cloudflare/vite-plugin が書き出した dist/wrangler.json に Worker 名が
+      # 入っている。プレビュー URL のホスト名は 63 文字までなので、Worker 名と
+      # 区切りの "-" を引いた残りが別名に使える長さになる。
+      - name: Derive the preview alias
+        if: github.event_name == 'pull_request'
+        id: alias
+        shell: bash
+        env:
+          APP: ${{ matrix.app }}
+          BRANCH: ${{ github.head_ref }}
+        run: |
+          worker=$(python3 -c "import json; print(json.load(open('$APP/dist/wrangler.json'))['name'])")
+          budget=$((63 - ${#worker} - 1))
+          alias=$(
+            printf '%s' "$BRANCH" |
+              sed 's|^[^/]*/||' |
+              tr '[:upper:]' '[:lower:]' |
+              sed 's|[^a-z0-9]|-|g' |
+              cut -c "1-$budget"
+          )
+          echo "value=${alias%-}" >> "$GITHUB_OUTPUT"
+
+      # ワークスペースの wrangler をそのまま使う。wrangler は dist/wrangler.json
+      # にリダイレクトするので、Worker 名やバインディングはアプリ側の設定だけで決まる。
+      - name: Deploy
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          APP: ${{ matrix.app }}
+          ALIAS: ${{ steps.alias.outputs.value }}
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            vp -C "$APP" exec wrangler versions upload --preview-alias "$ALIAS" | tee upload.log
+            url=$(grep -oE 'https://[A-Za-z0-9.-]+\.workers\.dev' upload.log | tail -1)
+            {
+              echo "### $APP のプレビュー \`$ALIAS\`"
+              echo
+              if [ -n "$url" ]; then
+                echo "$url"
+              else
+                echo "URL をログから読み取れませんでした。上のステップのログを確認してください。"
+              fi
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            vp -C "$APP" exec wrangler deploy
+          fi

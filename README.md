@@ -98,6 +98,27 @@ vp run deploy      # pdf-manager のビルド + wrangler deploy
 Worker のコードは持たないため `worker-configuration.d.ts` はコミットしていない。バインディングを
 追加して型が必要になったら `vp -C apps/pdf-manager run cf-typegen` で生成する。
 
+## CI
+
+ワークフローは 2 本だけで、どちらもアプリが増えても書き換えない。
+
+| ファイル                       | トリガー                   | 内容                                                         |
+| ------------------------------ | -------------------------- | ------------------------------------------------------------ |
+| `.github/workflows/ci.yml`     | PR / main への push        | `vp check` → `vp run -r test` → `vp run -r build`            |
+| `.github/workflows/deploy.yml` | main への push / PR / 手動 | 対象アプリを matrix で回し、push なら本番、PR ならプレビュー |
+
+- CI の 3 コマンドはすべてワークスペース全体が対象なので、アプリ単位のジョブは要らない。
+- `deploy.yml` は `wrangler.jsonc` を持つ `apps/*` を列挙して matrix に流す。Worker 名や
+  バインディングはアプリ側の `wrangler.jsonc` にあり、ワークフローには出てこない。
+  **アプリを増やすときにやることは `apps/` にディレクトリを作ることだけ。**
+- プレビューの別名はブランチ名から作る。長さの上限は `dist/wrangler.json` の Worker 名から
+  アプリごとに計算する（ホスト名の 63 文字から Worker 名と区切りを引いた残り）。
+- アプリが 3 つを超えたら、`deploy.yml` の `targets` ジョブを
+  `pnpm --filter "...[<base>]" list --depth -1 --json` に差し替えて、変更されたパッケージと
+  その波及先だけに絞る。pnpm が依存グラフから波及先を出すので、依存関係を YAML に書く必要はない。
+
+`CLOUDFLARE_API_TOKEN` と `CLOUDFLARE_ACCOUNT_ID` をリポジトリの Secrets に登録しておくこと。
+
 ## shadcn/ui
 
 Components live in `@repo/ui` and are shared by every app. Add one from the workspace root:
