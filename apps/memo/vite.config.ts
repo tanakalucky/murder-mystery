@@ -4,7 +4,6 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite-plus";
 import { playwright } from "vite-plus/test/browser-playwright";
 
-// https://viteplus.dev/config/
 export default defineConfig({
   plugins: [react(), cloudflare(), tailwindcss()],
   test: {
