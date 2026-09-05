@@ -95,6 +95,7 @@ jobs:
               sed 's|[^a-z0-9]|-|g' |
               cut -c "1-$budget"
           )
+          echo "worker=$worker" >> "$GITHUB_OUTPUT"
           echo "value=${alias%-}" >> "$GITHUB_OUTPUT"
 
       # ワークスペースの wrangler をそのまま使う。wrangler は dist/wrangler.json
@@ -106,12 +107,15 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           APP: ${{ matrix.app }}
           ALIAS: ${{ steps.alias.outputs.value }}
+          WORKER: ${{ steps.alias.outputs.worker }}
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            vp -C "$APP" exec wrangler versions upload --preview-alias "$ALIAS" | tee upload.log
-            url=$(grep -oE 'https://[A-Za-z0-9.-]+\.workers\.dev' upload.log | tail -1)
+          set -euo pipefail
+
+          summarize() {
+            # pipefail を有効にしているので、URL が無いときの grep の失敗は握りつぶす
+            url=$(grep -oE 'https://[A-Za-z0-9.-]+\.workers\.dev' deploy.log | tail -1 || true)
             {
-              echo "### $APP のプレビュー \`$ALIAS\`"
+              echo "### $1"
               echo
               if [ -n "$url" ]; then
                 echo "$url"
@@ -119,6 +123,33 @@ jobs:
                 echo "URL をログから読み取れませんでした。上のステップのログを確認してください。"
               fi
             } >> "$GITHUB_STEP_SUMMARY"
-          else
+          }
+
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
             vp -C "$APP" exec wrangler deploy
+            exit 0
           fi
+
+          # `versions upload` は既にある Worker にバージョンを載せるだけで、Worker 自体は
+          # 作れない。初めてデプロイするアプリの PR では先に `deploy` して Worker を作る。
+          status=$(
+            curl -sS -o /dev/null -w '%{http_code}' \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER"
+          )
+
+          # 既にある Worker は 200 とは限らない（本文を返さず 204 になることがある）
+          case "$status" in
+            2??)
+              vp -C "$APP" exec wrangler versions upload --preview-alias "$ALIAS" | tee deploy.log
+              summarize "$APP のプレビュー \`$ALIAS\`"
+              ;;
+            404)
+              vp -C "$APP" exec wrangler deploy | tee deploy.log
+              summarize "$APP の Worker \`$WORKER\` を新規作成しました（プレビューは次の push から）"
+              ;;
+            *)
+              echo "Worker の存在確認に失敗しました (HTTP $status)" >&2
+              exit 1
+              ;;
+          esac
