@@ -20,7 +20,6 @@ jobs:
       - uses: actions/checkout@v7.0.1
 
       # Vite+ 本体・Node・pnpm のセットアップと依存キャッシュをまとめて行う。
-      # setup-node と pnpm/action-setup は不要。
       - uses: voidzero-dev/setup-vp@v1.19.0
         with:
           node-version: "24"
@@ -29,7 +28,6 @@ jobs:
       - name: Install dependencies
         run: vp install
 
-      # フォーマット・lint・型チェックをワークスペース全体で一括実行する
       - name: Check
         run: vp check
 
