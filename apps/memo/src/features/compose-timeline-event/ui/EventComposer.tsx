@@ -22,8 +22,8 @@ interface Props {
 interface Menu {
   readonly mention: Mention;
   readonly items: readonly string[];
-  /** 入力欄を包む要素から見たキャレットの位置 */
-  readonly top: number;
+  /** 入力欄を包む要素から見たキャレットの位置。入力欄は画面下部にあるので上に開く */
+  readonly bottom: number;
   readonly left: number;
 }
 
@@ -76,7 +76,7 @@ export const EventComposer = ({ suggestions, onSubmit }: Props) => {
     setMenu({
       mention,
       items,
-      top: caret.top - (container?.top ?? 0),
+      bottom: (container?.bottom ?? 0) - caret.top,
       left: caret.left - (container?.left ?? 0),
     });
     setActiveIndex(0);
@@ -136,7 +136,7 @@ export const EventComposer = ({ suggestions, onSubmit }: Props) => {
   };
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className="relative shrink-0">
       <label className="sr-only" htmlFor={textareaId}>
         メモ
       </label>
@@ -164,7 +164,7 @@ export const EventComposer = ({ suggestions, onSubmit }: Props) => {
       {menu !== null && (
         <ul
           id={listboxId}
-          style={{ top: `${menu.top + 4}px`, left: `${menu.left}px` }}
+          style={{ bottom: `${menu.bottom + 4}px`, left: `${menu.left}px` }}
           className="absolute z-50 max-h-50 min-w-30 overflow-y-auto rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg"
           role="listbox"
         >
