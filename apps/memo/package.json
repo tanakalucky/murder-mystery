@@ -1,0 +1,48 @@
+{
+  "name": "memo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "マーダーミステリー用のタイムラインメモアプリ",
+  "type": "module",
+  "imports": {
+    "#/*": [
+      "./src/*",
+      "./src/*.ts",
+      "./src/*.tsx",
+      "./src/*/index.ts"
+    ]
+  },
+  "scripts": {
+    "build": "vp build",
+    "cf-typegen": "wrangler types",
+    "deploy": "wrangler deploy",
+    "dev": "vp dev",
+    "preview": "vp preview",
+    "test": "vp test",
+    "ui": "vpx shadcn@latest"
+  },
+  "dependencies": {
+    "@repo/ui": "workspace:*",
+    "lucide-react": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "react-error-boundary": "catalog:",
+    "react-router": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "catalog:",
+    "@repo/tsconfig": "workspace:*",
+    "@tailwindcss/vite": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "@vitest/browser-playwright": "catalog:",
+    "playwright": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest-browser-react": "catalog:",
+    "wrangler": "catalog:"
+  }
+}
