@@ -1,4 +1,11 @@
 @import "@repo/ui/styles/base.css";
 
 /* Scan this app's own sources on top of what @repo/ui already registers. */
-@source "./";
+@source "../../";
+
+@layer base {
+  html,
+  body {
+    @apply h-full;
+  }
+}

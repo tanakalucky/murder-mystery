@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "ready": "vp check && vp run -r test && vp run -r build",
-    "dev": "vp run website#dev",
+    "dev": "vp run pdf-manager#dev",
     "build": "vp run -r build",
+    "deploy": "vp run pdf-manager#build && vp run pdf-manager#deploy",
     "ui": "vp run --no-cache --filter=@repo/ui ui",
-    "ui:website": "vp run --no-cache --filter=website ui",
+    "ui:pdf-manager": "vp run --no-cache --filter=pdf-manager ui",
     "prepare": "vp config"
   },
   "devDependencies": {
