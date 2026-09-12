@@ -1,18 +1,19 @@
-import { useMemo } from "react";
-
-import {
-  addTimelineEvent,
-  collectSuggestions,
-  deleteAllTimelineEvents,
-  EventCard,
-  useTimelineEvents,
-} from "#/entities/timeline-event";
+import { clearMasters, useTimelineMasters } from "#/entities/timeline-master";
+import { deleteAllTimelineEvents, EventCard, useTimelineEvents } from "#/entities/timeline-event";
 import { EventComposer } from "#/features/compose-timeline-event";
-import { DeleteAllButton } from "#/features/delete-all-events";
+import { DeleteAllButton } from "#/features/delete-all-data";
+
+import { submitMemo } from "../model/submit-memo";
+
+const deleteEverything = () => {
+  deleteAllTimelineEvents();
+  clearMasters();
+};
 
 export const MemoPage = () => {
   const events = useTimelineEvents();
-  const suggestions = useMemo(() => collectSuggestions(events), [events]);
+  const masters = useTimelineMasters();
+  const masterCount = masters.players.length + masters.locations.length + masters.times.length;
 
   return (
     // 入力欄を画面下部に留めたまま、あふれたメモだけを送れるよう
@@ -29,7 +30,11 @@ export const MemoPage = () => {
           </p>
         </div>
 
-        <DeleteAllButton count={events.length} onConfirm={deleteAllTimelineEvents} />
+        <DeleteAllButton
+          memoCount={events.length}
+          masterCount={masterCount}
+          onConfirm={deleteEverything}
+        />
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -49,7 +54,7 @@ export const MemoPage = () => {
         )}
       </div>
 
-      <EventComposer suggestions={suggestions} onSubmit={addTimelineEvent} />
+      <EventComposer masters={masters} onSubmit={submitMemo} />
     </div>
   );
 };

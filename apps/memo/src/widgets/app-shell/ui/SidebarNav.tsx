@@ -1,5 +1,5 @@
 import { Button } from "@repo/ui/components/button";
-import { CalendarDays, Home, NotebookPen, SearchCheck, X } from "lucide-react";
+import { CalendarDays, Home, NotebookPen, SearchCheck, SlidersHorizontal, X } from "lucide-react";
 import { NavLink } from "react-router";
 
 import { ThemeToggle } from "#/features/toggle-theme";
@@ -8,6 +8,7 @@ const LINKS = [
   { to: "/", label: "ホーム", Icon: Home, end: true },
   { to: "/memo", label: "タイムラインメモ", Icon: NotebookPen, end: false },
   { to: "/timetable", label: "タイムテーブル", Icon: CalendarDays, end: false },
+  { to: "/settings", label: "人物・場所・時刻", Icon: SlidersHorizontal, end: false },
 ] as const;
 
 interface Props {

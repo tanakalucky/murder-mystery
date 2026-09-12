@@ -16,9 +16,10 @@ A Vite+ monorepo with React 19, Tailwind CSS v4 and shadcn/ui.
 `apps/memo` is **Murder Mystery Memo**, 議論中のメモを取り、時刻 × 人物のタイムテーブルに組み替えるアプリ。
 
 - **書きながら構造化**: `@人物` `#場所` `>時刻` を本文に混ぜて書くと、その場で属性として切り出される
-- **打ちながら候補が出る**: 一度使った人物・場所・時刻はキャレットに追従する候補メニューから選べる
+- **打ちながら候補が出る**: 登録済みの人物・場所・時刻はキャレットに追従する候補メニューから選べる
+- **開始前に登録できる**: 分かっている人物・場所・時刻は設定画面で先に登録する。打ち間違いの修正と並び替えもここでやる
 - **タイムテーブル**: 記録したメモを 時刻 × 人物 の表に並べ替える。人物や時刻が未指定のメモも専用の行・列に落ちる
-- **メモは localStorage**: `timeline` キーに保存する。Remix 版から移ってきても保存済みのメモをそのまま読める
+- **データは localStorage**: メモは `timeline`、人物・場所・時刻は `timeline_masters` キーに保存する
 
 ## Workspace
 
@@ -123,32 +124,52 @@ apps/memo/src/
 ├── pages/home/                   # 使い方を案内するトップページ
 ├── pages/memo/                   # メモの入力欄と一覧
 ├── pages/timetable/              # 時刻 × 人物の表への組み替え
+├── pages/settings/               # 人物・場所・時刻の登録（1 画面に 3 セクション）
 ├── widgets/app-shell/            # サイドバーとモバイルのドロワー、ルートの描画先
-├── features/compose-timeline-event/  # 入力欄と候補メニュー
-├── features/delete-all-events/
+├── features/compose-timeline-event/   # 入力欄と候補メニュー
+├── features/manage-timeline-master/   # 人物・場所・時刻の追加・修正・並び替え・削除
+├── features/delete-all-data/
 ├── features/toggle-theme/
-└── entities/timeline-event/      # メモのモデル・localStorage 永続化・入力候補の導出・カード UI
+├── entities/timeline-event/      # メモのモデル・localStorage 永続化・カード UI
+└── entities/timeline-master/     # 人物・場所・時刻のモデル・localStorage 永続化・並び順
 ```
 
-ルーティングは `react-router` で `/`・`/memo`・`/timetable` に分ける。SPA なので直リンクは
+ルーティングは `react-router` で `/`・`/memo`・`/timetable`・`/settings` に分ける。SPA なので直リンクは
 Cloudflare 側の `not_found_handling: "single-page-application"` が受ける。
 
-### メモの持ち方
+### メモと、人物・場所・時刻の持ち方
 
-メモは localStorage の `timeline` キーだけに入っている。人物・場所・時刻の入力候補は保存せず、
-メモから毎回導出する（`entities/timeline-event/lib/collect-suggestions.ts`）。候補はメモの登録と
-同時にしか増えず、全消しで一緒に消えるので、別に持ち回っても内容は変わらないため。
+localStorage のキーは 2 つ。メモは `timeline`（形は変えていないので、保存済みのメモはそのまま
+読める）、人物・場所・時刻は `timeline_masters` に `{ players, locations, times }` の 1 オブジェクト
+で入る。
 
-Remix 版が別に持っていた `timeline_players` / `timeline_locations` / `timeline_times` は使わない。
-`timeline` の形は変えていないので、Remix 版で書いたメモはそのまま読める。
+**入力候補もタイムテーブルの行・列も `timeline_masters` だけから引く。** メモから導出はしない。
+以前は導出していたが、それだとメモを 1 件書くまで人物も時刻も存在せず、開始前に分かっている
+情報を先に登録しておけなかった。
 
-メモ画面とタイムテーブル画面は別ルートなので、状態は React の外の 1 つのストアに置き、
-`useSyncExternalStore` で両画面から読む（`entities/timeline-event/model/timeline-store.ts`）。
+- メモを記録すると、書かれていた `@人物` `#場所` `>時刻` は自動でマスタにも入る（挙動は以前と
+  変わらない）。設定画面からはメモなしで登録できる。
+- 並び順はユーザーが決めたものがそのままタイムテーブルの行・列になる。時刻だけは登録時に
+  時刻順の位置へ差し込む（`9:00` が `10:00` の後ろに行かないよう分に直して比べる。時刻として
+  読めない区切りは末尾に入れて、あとは上下の移動に任せる）。
+- 名前の修正は、それを使っている既存のメモにも波及する。メモは人物や場所を名前そのもので
+  持っているため。同じ名前が既にあれば 1 つに合流するので、打ち間違いの修正がそのまま
+  マージになる。
+- メモで使われている値は削除できない。シナリオ中に退場した人物でも、何をしていたかは追う
+  必要があるので消させない。消せるのは未使用のものだけで、まとめて捨てるなら「全て削除」。
+- マスタが未作成のブラウザでは、起動時に 1 度だけ既存のメモから作る
+  （`app/lib/migrate-masters.ts`）。
+
+エンティティ同士は参照し合えないので、2 つのストアを跨ぐ操作（メモの記録・名前の修正・起動時の
+移行）は必ず上位のレイヤーが両方の Public API を順に呼ぶ。
+
+どの画面も別ルートなので、状態は React の外の 1 つのストアに置き、`useSyncExternalStore` で
+全画面から読む（`entities/*/model/*-store.ts`）。
 
 ### テスト
 
-pdf-manager と同じ 2 種類。ロジック（メモの解析・候補の導出・表の組み立て）は Unit テストで、
-入力欄と候補メニューの挙動は Browser テストで確かめる。
+pdf-manager と同じ 2 種類。ロジック（メモの解析・並び順の決定・表の組み立て）は Unit テストで、
+入力欄と候補メニュー・設定画面の挙動は Browser テストで確かめる。
 
 ```bash
 vp -C apps/memo test

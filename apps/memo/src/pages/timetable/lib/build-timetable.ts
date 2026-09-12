@@ -1,4 +1,5 @@
-import { collectSuggestions, type TimelineEvent } from "#/entities/timeline-event";
+import type { TimelineMasters } from "#/entities/timeline-master";
+import type { TimelineEvent } from "#/entities/timeline-event";
 
 /** 人物・時刻が未指定のメモをまとめる列/行のキー */
 export const UNASSIGNED = "";
@@ -21,16 +22,19 @@ export interface Timetable {
 
 /**
  * メモを 時刻 × 人物 の表に組み替える。
+ * 軸は登録済みの人物・時刻をそのままの並びで使うので、メモがまだ 1 件もない人物や
+ * 時刻も空の列・行として出る。開始前に組んだ枠が先に見えるのが狙い。
  * 人物や時刻が未指定のメモも取りこぼさないよう、そういうメモがあるときだけ
  * 「未指定」の列・行を末尾に足す。
  */
-export const buildTimetable = (events: readonly TimelineEvent[]): Timetable => {
-  const { players, times } = collectSuggestions(events);
-
-  const columns = [...players];
+export const buildTimetable = (
+  events: readonly TimelineEvent[],
+  masters: TimelineMasters,
+): Timetable => {
+  const columns = [...masters.players];
   if (events.some((event) => !event.playerCharacter)) columns.push(UNASSIGNED);
 
-  const timeKeys = [...times];
+  const timeKeys = [...masters.times];
   if (events.some((event) => !event.time)) timeKeys.push(UNASSIGNED);
 
   const rows = timeKeys.map((time) => ({
