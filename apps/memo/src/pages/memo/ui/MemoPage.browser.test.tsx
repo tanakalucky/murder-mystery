@@ -117,6 +117,78 @@ describe("MemoPage", () => {
     await expect.poll(() => screen.getByRole("listbox").query()).toBeNull();
   });
 
+  it("記録済みのメモを開くと、入力欄の形に戻して書き直せる", async () => {
+    // Arrange
+    saveTimelineEvents([
+      { playerCharacter: "探偵", location: "食堂", time: "10:00", body: "アリバイ確認" },
+    ]);
+    const screen = await renderPage();
+
+    // Act
+    await screen.getByRole("button", { name: "1 件目のメモを編集" }).click();
+    const textarea = screen.getByLabelText("メモを編集");
+    await expect.element(textarea).toHaveValue("@探偵 #食堂 >10:00 アリバイ確認");
+
+    await userEvent.fill(textarea, "@執事 #書斎 >11:00 アリバイなし");
+    await screen.getByRole("button", { name: "保存" }).click();
+
+    // Assert: 一覧はカードに戻り、書き直した内容が保存される
+    await expect.element(screen.getByText("アリバイなし")).toBeVisible();
+    expect(loadTimelineEvents()).toEqual([
+      { playerCharacter: "執事", location: "書斎", time: "11:00", body: "アリバイなし" },
+    ]);
+  });
+
+  it("書き直しで増えた人物・場所・時刻もマスタに登録する", async () => {
+    saveTimelineEvents([{ body: "全員が集合した" }]);
+    const screen = await renderPage();
+
+    await screen.getByRole("button", { name: "1 件目のメモを編集" }).click();
+    await userEvent.fill(screen.getByLabelText("メモを編集"), "@探偵 #食堂 >10:00 全員が集合した");
+    await screen.getByRole("button", { name: "保存" }).click();
+
+    await expect.element(screen.getByText("@探偵")).toBeVisible();
+    expect(loadMasters()).toEqual({ players: ["探偵"], locations: ["食堂"], times: ["10:00"] });
+  });
+
+  it("編集をやめると元のメモが残る", async () => {
+    const stored = [{ playerCharacter: "探偵", body: "アリバイ確認" }];
+    saveTimelineEvents(stored);
+    const screen = await renderPage();
+
+    await screen.getByRole("button", { name: "1 件目のメモを編集" }).click();
+    await userEvent.fill(screen.getByLabelText("メモを編集"), "書き換えた");
+    await screen.getByRole("button", { name: "キャンセル" }).click();
+
+    await expect.element(screen.getByText("アリバイ確認")).toBeVisible();
+    expect(loadTimelineEvents()).toEqual(stored);
+  });
+
+  it("空にしたメモは保存できない", async () => {
+    saveTimelineEvents([{ body: "アリバイ確認" }]);
+    const screen = await renderPage();
+
+    await screen.getByRole("button", { name: "1 件目のメモを編集" }).click();
+    await userEvent.clear(screen.getByLabelText("メモを編集"));
+
+    await expect.element(screen.getByRole("button", { name: "保存" })).toBeDisabled();
+  });
+
+  it("編集中も登録済みの候補から選べる", async () => {
+    saveTimelineEvents([{ body: "アリバイ確認" }]);
+    saveMasters({ ...EMPTY_MASTERS, players: ["探偵"] });
+    const screen = await renderPage();
+
+    await screen.getByRole("button", { name: "1 件目のメモを編集" }).click();
+    await userEvent.fill(screen.getByLabelText("メモを編集"), "アリバイ確認 @探");
+
+    const option = screen.getByRole("option", { name: "@探偵" });
+    await expect.element(option).toBeVisible();
+    await option.click();
+
+    await expect.element(screen.getByLabelText("メモを編集")).toHaveValue("アリバイ確認 @探偵 ");
+  });
+
   it("メモもマスタも空のときは全て削除ボタンを押せない", async () => {
     const screen = await renderPage();
 

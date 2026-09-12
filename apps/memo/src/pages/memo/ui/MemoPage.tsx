@@ -1,9 +1,18 @@
 import { clearMasters, useTimelineMasters } from "#/entities/timeline-master";
-import { deleteAllTimelineEvents, EventCard, useTimelineEvents } from "#/entities/timeline-event";
-import { EventComposer } from "#/features/compose-timeline-event";
+import {
+  deleteAllTimelineEvents,
+  EventCard,
+  formatEventText,
+  useTimelineEvents,
+} from "#/entities/timeline-event";
+import { EventComposer, EventEditor } from "#/features/compose-timeline-event";
 import { DeleteAllButton } from "#/features/delete-all-data";
+import { Button } from "@repo/ui/components/button";
+import { Pencil } from "lucide-react";
+import { useState } from "react";
 
 import { submitMemo } from "../model/submit-memo";
+import { updateMemo } from "../model/update-memo";
 
 const deleteEverything = () => {
   deleteAllTimelineEvents();
@@ -14,6 +23,8 @@ export const MemoPage = () => {
   const events = useTimelineEvents();
   const masters = useTimelineMasters();
   const masterCount = masters.players.length + masters.locations.length + masters.times.length;
+  // 編集中のメモ。並び替えも 1 件だけの削除もできないので、位置で覚えておける
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   return (
     // 入力欄を画面下部に留めたまま、あふれたメモだけを送れるよう
@@ -45,9 +56,33 @@ export const MemoPage = () => {
         ) : (
           <ol className="flex flex-col gap-4">
             {events.map((event, index) => (
-              // メモは追加と全消ししかできないので、並び順がそのまま識別子になる
+              // メモは追加と書き直ししかできないので、並び順がそのまま識別子になる
               <li key={index}>
-                <EventCard event={event} />
+                {editingIndex === index ? (
+                  <EventEditor
+                    masters={masters}
+                    initialText={formatEventText(event)}
+                    onSubmit={(text) => {
+                      updateMemo(index, text);
+                      setEditingIndex(null);
+                    }}
+                    onCancel={() => setEditingIndex(null)}
+                  />
+                ) : (
+                  <EventCard
+                    event={event}
+                    action={
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`${String(index + 1)} 件目のメモを編集`}
+                        onClick={() => setEditingIndex(index)}
+                      >
+                        <Pencil />
+                      </Button>
+                    }
+                  />
+                )}
               </li>
             ))}
           </ol>
