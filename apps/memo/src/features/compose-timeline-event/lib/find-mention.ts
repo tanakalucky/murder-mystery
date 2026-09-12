@@ -1,13 +1,7 @@
-export type MentionKind = "player" | "location" | "time";
-
-export const MENTION_PREFIX: Record<MentionKind, string> = {
-  player: "@",
-  location: "#",
-  time: ">",
-};
+import { type MasterKind, MASTER_PREFIX } from "#/entities/timeline-master";
 
 export interface Mention {
-  readonly kind: MentionKind;
+  readonly kind: MasterKind;
   /** 接頭辞の後ろに打ち込み済みの文字。候補の絞り込みに使う */
   readonly query: string;
   /** 接頭辞そのものの位置。候補を確定するときはここから書き換える */
@@ -15,7 +9,7 @@ export interface Mention {
 }
 
 // 先に当たったものを採るので、`@a>b` は場所ではなく人物として扱う
-const PATTERNS: readonly { kind: MentionKind; pattern: RegExp }[] = [
+const PATTERNS: readonly { kind: MasterKind; pattern: RegExp }[] = [
   { kind: "player", pattern: /@([^\s@]*)$/ },
   { kind: "time", pattern: />([^\s>]*)$/ },
   { kind: "location", pattern: /#([^\s#]*)$/ },
@@ -45,7 +39,7 @@ export const applyMention = (
   mention: Mention,
   value: string,
 ): MentionApplied => {
-  const inserted = `${MENTION_PREFIX[mention.kind]}${value} `;
+  const inserted = `${MASTER_PREFIX[mention.kind]}${value} `;
 
   return {
     text: text.slice(0, mention.start) + inserted + text.slice(cursorPosition),

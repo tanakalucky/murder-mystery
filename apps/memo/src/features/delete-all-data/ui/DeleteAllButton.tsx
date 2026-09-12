@@ -3,11 +3,12 @@ import { Trash2 } from "lucide-react";
 import { useRef } from "react";
 
 interface Props {
-  count: number;
+  memoCount: number;
+  masterCount: number;
   onConfirm: () => void;
 }
 
-export const DeleteAllButton = ({ count, onConfirm }: Props) => {
+export const DeleteAllButton = ({ memoCount, masterCount, onConfirm }: Props) => {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   const handleConfirm = () => {
@@ -19,7 +20,7 @@ export const DeleteAllButton = ({ count, onConfirm }: Props) => {
     <>
       <Button
         variant="secondary"
-        disabled={count === 0}
+        disabled={memoCount + masterCount === 0}
         onClick={() => dialogRef.current?.showModal()}
       >
         <Trash2 aria-hidden />
@@ -31,12 +32,11 @@ export const DeleteAllButton = ({ count, onConfirm }: Props) => {
         ref={dialogRef}
         className="m-auto w-full max-w-110 rounded-xl border border-border bg-popover p-4 text-popover-foreground shadow-lg backdrop:bg-black/50"
       >
-        <h2 className="text-xl font-semibold">記録したメモを全て削除しますか？</h2>
+        <h2 className="text-xl font-semibold">このシナリオの記録を全て削除しますか？</h2>
 
         <p className="mt-3 text-sm text-muted-foreground">
-          {count}{" "}
-          件のメモがこのブラウザから削除されます。人物・場所・時刻の入力候補も一緒に消えます。
-          この操作は取り消せません。
+          {memoCount} 件のメモと、登録した人物・場所・時刻 {masterCount}{" "}
+          件がこのブラウザから削除されます。この操作は取り消せません。
         </p>
 
         <div className="mt-4 flex justify-end gap-2">

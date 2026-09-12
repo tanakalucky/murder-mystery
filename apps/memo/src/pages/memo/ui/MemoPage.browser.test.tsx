@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vite-plus/test";
 import { userEvent } from "vite-plus/test/browser";
 import { render } from "vitest-browser-react";
 
+import { EMPTY_MASTERS, loadMasters, saveMasters } from "#/entities/timeline-master";
 import { loadTimelineEvents, saveTimelineEvents } from "#/entities/timeline-event";
 
 import { MemoPage } from "./MemoPage";
@@ -48,6 +49,16 @@ describe("MemoPage", () => {
     ]);
   });
 
+  it("メモに書いた人物・場所・時刻をマスタにも登録する", async () => {
+    const screen = await renderPage();
+
+    await userEvent.type(screen.getByLabelText("メモ"), "@探偵 #食堂 >10:00 アリバイ確認");
+    await userEvent.keyboard("{Enter}");
+
+    await expect.element(screen.getByText("アリバイ確認")).toBeVisible();
+    expect(loadMasters()).toEqual({ players: ["探偵"], locations: ["食堂"], times: ["10:00"] });
+  });
+
   it("Shift+Enter では登録せずに改行する", async () => {
     const screen = await renderPage();
     const textarea = screen.getByLabelText("メモ");
@@ -60,9 +71,9 @@ describe("MemoPage", () => {
     await expect.element(textarea).toHaveValue("一行目\n二行目");
   });
 
-  it("既に使った人物名を候補に出し、選ぶと入力欄に差し込む", async () => {
-    // Arrange: 候補はメモから導出されるので、まず 1 件登録しておく
-    saveTimelineEvents([{ playerCharacter: "探偵", body: "食堂にいた" }]);
+  it("登録済みの人物名を候補に出し、選ぶと入力欄に差し込む", async () => {
+    // Arrange: 候補はマスタから引くので、メモが 1 件もなくても出る
+    saveMasters({ ...EMPTY_MASTERS, players: ["探偵"] });
     const screen = await renderPage();
 
     // Act
@@ -76,7 +87,7 @@ describe("MemoPage", () => {
   });
 
   it("候補は Escape で閉じられる", async () => {
-    saveTimelineEvents([{ playerCharacter: "探偵", body: "食堂にいた" }]);
+    saveMasters({ ...EMPTY_MASTERS, players: ["探偵"] });
     const screen = await renderPage();
 
     await userEvent.type(screen.getByLabelText("メモ"), "@探");
@@ -87,9 +98,10 @@ describe("MemoPage", () => {
     await expect.poll(() => screen.getByRole("listbox").query()).toBeNull();
   });
 
-  it("全て削除を確認するとメモも入力候補も空になる", async () => {
+  it("全て削除を確認するとメモもマスタも空になる", async () => {
     // Arrange
     saveTimelineEvents([{ playerCharacter: "探偵", body: "食堂にいた" }]);
+    saveMasters({ ...EMPTY_MASTERS, players: ["探偵"] });
     const screen = await renderPage();
 
     // Act
@@ -99,12 +111,13 @@ describe("MemoPage", () => {
     // Assert
     await expect.element(screen.getByText(/メモはまだありません/)).toBeVisible();
     expect(loadTimelineEvents()).toEqual([]);
+    expect(loadMasters()).toEqual(EMPTY_MASTERS);
 
     await userEvent.type(screen.getByLabelText("メモ"), "@探");
     await expect.poll(() => screen.getByRole("listbox").query()).toBeNull();
   });
 
-  it("メモが1件もないときは全て削除ボタンを押せない", async () => {
+  it("メモもマスタも空のときは全て削除ボタンを押せない", async () => {
     const screen = await renderPage();
 
     await expect.element(screen.getByRole("button", { name: "全て削除" })).toBeDisabled();

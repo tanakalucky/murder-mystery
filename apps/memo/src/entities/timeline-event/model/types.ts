@@ -5,3 +5,6 @@ export interface TimelineEvent {
   readonly location?: string;
   readonly body: string;
 }
+
+/** メモが持つ、マスタで管理する 3 つの項目 */
+export type TimelineField = "playerCharacter" | "location" | "time";

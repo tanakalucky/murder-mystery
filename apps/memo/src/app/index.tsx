@@ -6,11 +6,15 @@ import { RouterProvider } from "react-router";
 
 import { ErrorBoundary } from "#/app/providers/ErrorBoundary";
 
+import { migrateMasters } from "./lib/migrate-masters";
 import { router } from "./routes";
 
 const rootElement = document.getElementById("root");
 
 if (rootElement === null) throw new Error("#root が見つかりません");
+
+// ストアが読む前に済ませる
+migrateMasters();
 
 createRoot(rootElement).render(
   <StrictMode>

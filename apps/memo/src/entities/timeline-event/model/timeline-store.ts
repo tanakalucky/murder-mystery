@@ -5,8 +5,7 @@ import {
   saveTimelineEvents,
   TIMELINE_STORAGE_KEY,
 } from "../api/timeline-storage";
-import { parseEventText } from "../lib/parse-event-text";
-import type { TimelineEvent } from "./types";
+import type { TimelineEvent, TimelineField } from "./types";
 
 // メモ画面とタイムテーブル画面は別のルートなので、状態は React の外に置いて
 // localStorage と同じ 1 つの実体を両画面から読む。
@@ -45,11 +44,21 @@ const subscribe = (listener: () => void): (() => void) => {
 export const useTimelineEvents = (): readonly TimelineEvent[] =>
   useSyncExternalStore(subscribe, getSnapshot);
 
-export const addTimelineEvent = (text: string): void => {
-  const trimmed = text.trim();
-  if (trimmed === "") return;
+export const addTimelineEvent = (event: TimelineEvent): void => {
+  const next = [...getSnapshot(), event];
+  saveTimelineEvents(next);
+  emit(next);
+};
 
-  const next = [...getSnapshot(), parseEventText(trimmed)];
+/**
+ * マスタの打ち間違いを直したときに、既に書いたメモも追従させる。
+ * メモは人物や場所を名前そのもので持っているので、名前を変えるならここも変える。
+ */
+export const renameTimelineValue = (field: TimelineField, from: string, to: string): void => {
+  const current = getSnapshot();
+  const next = current.map((event) => (event[field] === from ? { ...event, [field]: to } : event));
+  if (next.every((event, index) => event === current[index])) return;
+
   saveTimelineEvents(next);
   emit(next);
 };

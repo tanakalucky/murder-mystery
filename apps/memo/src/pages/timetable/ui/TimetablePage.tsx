@@ -1,32 +1,44 @@
 import { CalendarDays, MapPin } from "lucide-react";
 import { Link } from "react-router";
 
+import { useTimelineMasters } from "#/entities/timeline-master";
 import { useTimelineEvents } from "#/entities/timeline-event";
 
 import { buildTimetable, UNASSIGNED } from "../lib/build-timetable";
 
 export const TimetablePage = () => {
   const events = useTimelineEvents();
-  const { columns, rows } = buildTimetable(events);
+  const masters = useTimelineMasters();
+  const { columns, rows } = buildTimetable(events, masters);
 
-  if (events.length === 0) {
+  // 登録だけして使っていない人物・時刻も軸になるので、軸が 1 本も立たないときだけ空にする
+  if (columns.length === 0 && rows.length === 0) {
     return (
       <div className="m-6 mx-auto flex w-full max-w-2xl flex-col items-center gap-6 rounded-2xl border border-border bg-card px-6 py-20 text-center text-card-foreground">
         <CalendarDays className="size-12 text-muted-foreground" aria-hidden />
 
-        <h1 className="text-xl font-bold">タイムテーブルにするメモがありません</h1>
+        <h1 className="text-xl font-bold">タイムテーブルにする人物も時刻もありません</h1>
 
         <p className="text-sm leading-relaxed text-muted-foreground">
-          タイムラインメモで人物や時刻を書き添えると、ここに 時刻 × 人物
-          の表が自動で組み上がります。
+          タイムラインメモで人物や時刻を書き添えるか、設定画面で先に登録すると、ここに 時刻 × 人物
+          の表が組み上がります。
         </p>
 
-        <Link
-          to="/memo"
-          className="rounded-lg bg-primary px-6 py-3 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/80"
-        >
-          メモを入力しに行く
-        </Link>
+        <div className="flex flex-wrap justify-center gap-3">
+          <Link
+            to="/memo"
+            className="rounded-lg bg-primary px-6 py-3 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/80"
+          >
+            メモを入力しに行く
+          </Link>
+
+          <Link
+            to="/settings"
+            className="rounded-lg border border-border px-6 py-3 text-sm font-bold transition-colors hover:bg-accent hover:text-accent-foreground"
+          >
+            人物・時刻を登録する
+          </Link>
+        </div>
       </div>
     );
   }

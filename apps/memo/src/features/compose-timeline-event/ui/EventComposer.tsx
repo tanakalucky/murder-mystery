@@ -2,20 +2,14 @@
 // datalist / select では位置も絞り込みも自前にできないため、role で組み立てる。
 // oxlint-disable jsx-a11y/prefer-tag-over-role
 // oxlint-disable jsx-a11y/no-noninteractive-element-to-interactive-role
-import type { Suggestions } from "#/entities/timeline-event";
+import { type MasterKind, MASTER_PREFIX, type TimelineMasters } from "#/entities/timeline-master";
 import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
 
-import {
-  applyMention,
-  findMention,
-  type Mention,
-  type MentionKind,
-  MENTION_PREFIX,
-} from "../lib/find-mention";
+import { applyMention, findMention, type Mention } from "../lib/find-mention";
 import { getTextareaCaretCoordinates } from "../lib/textarea-caret";
 
 interface Props {
-  suggestions: Suggestions;
+  masters: TimelineMasters;
   onSubmit: (text: string) => void;
 }
 
@@ -27,18 +21,18 @@ interface Menu {
   readonly left: number;
 }
 
-const candidatesFor = (suggestions: Suggestions, mention: Mention): readonly string[] => {
-  const pool: Record<MentionKind, readonly string[]> = {
-    player: suggestions.players,
-    location: suggestions.locations,
-    time: suggestions.times,
+const candidatesFor = (masters: TimelineMasters, mention: Mention): readonly string[] => {
+  const pool: Record<MasterKind, readonly string[]> = {
+    player: masters.players,
+    location: masters.locations,
+    time: masters.times,
   };
   const query = mention.query.toLowerCase();
 
   return pool[mention.kind].filter((item) => item.toLowerCase().includes(query));
 };
 
-export const EventComposer = ({ suggestions, onSubmit }: Props) => {
+export const EventComposer = ({ masters, onSubmit }: Props) => {
   const textareaId = useId();
   const listboxId = useId();
   const [text, setText] = useState("");
@@ -63,7 +57,7 @@ export const EventComposer = ({ suggestions, onSubmit }: Props) => {
 
   const openMenuAtCaret = (textarea: HTMLTextAreaElement) => {
     const mention = findMention(textarea.value, textarea.selectionStart);
-    const items = mention === null ? [] : candidatesFor(suggestions, mention);
+    const items = mention === null ? [] : candidatesFor(masters, mention);
 
     if (mention === null || items.length === 0) {
       setMenu(null);
@@ -185,7 +179,7 @@ export const EventComposer = ({ suggestions, onSubmit }: Props) => {
                 confirmMention(item);
               }}
             >
-              {MENTION_PREFIX[menu.mention.kind]}
+              {MASTER_PREFIX[menu.mention.kind]}
               {item}
             </li>
           ))}
