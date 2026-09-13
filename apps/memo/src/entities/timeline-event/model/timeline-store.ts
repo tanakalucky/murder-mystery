@@ -51,6 +51,19 @@ export const addTimelineEvent = (event: TimelineEvent): void => {
 };
 
 /**
+ * 記録済みのメモを 1 件書き直す。
+ * メモに識別子はなく、並び替えも 1 件だけの削除もできないので、位置がそのまま宛先になる。
+ */
+export const updateTimelineEvent = (index: number, event: TimelineEvent): void => {
+  const current = getSnapshot();
+  if (index < 0 || index >= current.length) return;
+
+  const next = current.map((existing, position) => (position === index ? event : existing));
+  saveTimelineEvents(next);
+  emit(next);
+};
+
+/**
  * マスタの打ち間違いを直したときに、既に書いたメモも追従させる。
  * メモは人物や場所を名前そのもので持っているので、名前を変えるならここも変える。
  */
