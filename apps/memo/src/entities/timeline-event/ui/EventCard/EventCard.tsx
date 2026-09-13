@@ -16,35 +16,38 @@ export const EventCard = ({ event, action }: Props) => {
 
   return (
     <article className="flex flex-col gap-2 rounded-lg border border-border bg-card p-4 text-card-foreground shadow-sm">
-      {(hasBadge || action !== undefined) && (
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            {Boolean(playerCharacter) && (
-              <span className="rounded bg-primary/10 px-2 py-0.5 font-bold text-primary">
-                @{playerCharacter}
-              </span>
-            )}
+      {hasBadge && (
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          {Boolean(playerCharacter) && (
+            <span className="rounded bg-primary/10 px-2 py-0.5 font-bold text-primary">
+              @{playerCharacter}
+            </span>
+          )}
 
-            {Boolean(time) && (
-              <span className="inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-muted-foreground">
-                <Clock className="size-3" aria-hidden />
-                {time}
-              </span>
-            )}
+          {Boolean(time) && (
+            <span className="inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-muted-foreground">
+              <Clock className="size-3" aria-hidden />
+              {time}
+            </span>
+          )}
 
-            {Boolean(location) && (
-              <span className="inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-muted-foreground">
-                <MapPin className="size-3" aria-hidden />
-                {location}
-              </span>
-            )}
-          </div>
-
-          {action}
+          {Boolean(location) && (
+            <span className="inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-muted-foreground">
+              <MapPin className="size-3" aria-hidden />
+              {location}
+            </span>
+          )}
         </div>
       )}
 
-      <p className="text-sm leading-relaxed whitespace-pre-wrap">{body}</p>
+      {/* 操作は本文と同じ行に置く。バッジが無いメモに空の行を作らないため */}
+      <div className="flex items-start justify-between gap-2">
+        <p className="min-w-0 flex-1 text-sm leading-relaxed break-all whitespace-pre-wrap">
+          {body}
+        </p>
+
+        {action}
+      </div>
     </article>
   );
 };

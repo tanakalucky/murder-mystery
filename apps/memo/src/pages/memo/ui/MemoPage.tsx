@@ -74,7 +74,7 @@ export const MemoPage = () => {
                     action={
                       <Button
                         variant="ghost"
-                        size="icon"
+                        size="icon-sm"
                         aria-label={`${String(index + 1)} 件目のメモを編集`}
                         onClick={() => setEditingIndex(index)}
                       >

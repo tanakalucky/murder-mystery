@@ -117,6 +117,20 @@ describe("MemoPage", () => {
     await expect.poll(() => screen.getByRole("listbox").query()).toBeNull();
   });
 
+  it("タグの無いメモはバッジの分の高さを取らない", async () => {
+    saveTimelineEvents([
+      { body: "全員が集合した" },
+      { playerCharacter: "探偵", time: "10:00", location: "食堂", body: "アリバイ確認" },
+    ]);
+    const screen = await renderPage();
+
+    const [plain, tagged] = [...screen.container.querySelectorAll("ol > li")];
+
+    expect(plain?.getBoundingClientRect().height).toBeLessThan(
+      tagged?.getBoundingClientRect().height ?? 0,
+    );
+  });
+
   it("入力欄は中身の行数に合わせて伸び、登録すると元の高さに戻る", async () => {
     const screen = await renderPage();
     // 登録すると「N 件目のメモを編集」ボタンが増えてラベルが引けなくなるので、要素を先に掴む
