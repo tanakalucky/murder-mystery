@@ -3,7 +3,7 @@
 // oxlint-disable jsx-a11y/prefer-tag-over-role
 // oxlint-disable jsx-a11y/no-noninteractive-element-to-interactive-role
 import { type MasterKind, MASTER_PREFIX, type TimelineMasters } from "#/entities/timeline-master";
-import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
+import { type KeyboardEvent, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 
 import { applyMention, findMention, type Mention } from "../lib/find-mention";
 import { getTextareaCaretCoordinates } from "../lib/textarea-caret";
@@ -43,6 +43,21 @@ const candidatesFor = (masters: TimelineMasters, mention: Mention): readonly str
 };
 
 /**
+ * 中身の行数ちょうどの高さにする。1 行のメモに 3 行分の箱を出さないための調整で、
+ * 上限は CSS の max-height が持つ（超えた分は入力欄の中でスクロールする）。
+ */
+const autoResize = (textarea: HTMLTextAreaElement): void => {
+  // 空のときは placeholder の折り返しまで scrollHeight に入ってしまうので、測る間だけ外す
+  const { placeholder } = textarea;
+  textarea.placeholder = "";
+  textarea.style.height = "auto";
+  // border-box なので、内容の高さ（scrollHeight）に枠線の分を足さないと 1 行ぶん足りない
+  const borders = textarea.offsetHeight - textarea.clientHeight;
+  textarea.style.height = `${String(textarea.scrollHeight + borders)}px`;
+  textarea.placeholder = placeholder;
+};
+
+/**
  * `@人物` `#場所` `>時刻` の候補を出す入力欄。
  * 新規のメモ（EventComposer）と記録済みのメモの書き直し（EventEditor）が共有する。
  */
@@ -64,6 +79,13 @@ export const MentionTextarea = ({
   const containerRef = useRef<HTMLDivElement>(null);
   // 候補を確定したあとのカーソル位置。textarea の再描画を待ってから戻す
   const pendingCursorRef = useRef<number | null>(null);
+
+  // 候補の確定・送信後のクリア・編集の開始など、入力以外で中身が変わったときの高さ合わせ。
+  // 打っている最中は onChange の中で先に合わせる（候補メニューの位置決めが高さを見るため）
+  useLayoutEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea !== null) autoResize(textarea);
+  }, [value]);
 
   useEffect(() => {
     const cursorPosition = pendingCursorRef.current;
@@ -159,7 +181,7 @@ export const MentionTextarea = ({
         ref={textareaRef}
         value={value}
         placeholder={placeholder}
-        rows={3}
+        rows={1}
         // 呼び出し側が編集を開いた直後にだけ渡す
         // oxlint-disable-next-line jsx-a11y/no-autofocus
         autoFocus={autoFocus}
@@ -168,9 +190,11 @@ export const MentionTextarea = ({
         aria-controls={menu === null ? undefined : listboxId}
         aria-expanded={menu !== null}
         aria-activedescendant={menu === null ? undefined : `${listboxId}-${activeIndex}`}
-        className="w-full resize-y rounded-lg border border-border bg-card px-3 py-2 text-sm leading-relaxed break-all whitespace-pre-wrap text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+        className="max-h-50 w-full resize-none overflow-y-auto rounded-lg border border-border bg-card px-3 py-2 text-sm leading-relaxed break-all whitespace-pre-wrap text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         onChange={(event) => {
           onChange(event.target.value);
+          // 折り返しで増えた行のキャレットを拾えるよう、位置を測る前に高さを合わせる
+          autoResize(event.target);
           openMenuAtCaret(event.target);
         }}
         onKeyDown={handleKeyDown}

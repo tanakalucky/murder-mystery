@@ -30,7 +30,7 @@ export const EventEditor = ({ masters, initialText, onSubmit, onCancel }: Props)
   };
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-border bg-card p-4 text-card-foreground shadow-sm">
+    <div className="flex flex-col gap-2 rounded-lg border border-border bg-card p-3 text-card-foreground shadow-sm">
       <MentionTextarea
         masters={masters}
         value={text}
@@ -44,11 +44,11 @@ export const EventEditor = ({ masters, initialText, onSubmit, onCancel }: Props)
       />
 
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="secondary" size="lg" onClick={onCancel}>
+        <Button type="button" variant="secondary" size="sm" onClick={onCancel}>
           キャンセル
         </Button>
 
-        <Button type="button" size="lg" disabled={isEmpty} onClick={submit}>
+        <Button type="button" size="sm" disabled={isEmpty} onClick={submit}>
           保存
         </Button>
       </div>

@@ -23,7 +23,7 @@ export const EventComposer = ({ masters, onSubmit }: Props) => {
         masters={masters}
         value={text}
         label="メモ"
-        placeholder="メモを入力してください... (例: @探偵 #食堂 >10:00 アリバイ確認)"
+        placeholder="例: @探偵 #食堂 >10:00 アリバイ確認"
         onChange={setText}
         onSubmit={submit}
       />

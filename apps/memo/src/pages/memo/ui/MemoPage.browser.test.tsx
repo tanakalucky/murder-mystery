@@ -117,6 +117,25 @@ describe("MemoPage", () => {
     await expect.poll(() => screen.getByRole("listbox").query()).toBeNull();
   });
 
+  it("入力欄は中身の行数に合わせて伸び、登録すると元の高さに戻る", async () => {
+    const screen = await renderPage();
+    // 登録すると「N 件目のメモを編集」ボタンが増えてラベルが引けなくなるので、要素を先に掴む
+    const textarea = screen.getByLabelText("メモ").element() as HTMLTextAreaElement;
+    const heightOf = () => textarea.offsetHeight;
+
+    const oneLine = heightOf();
+
+    await userEvent.type(textarea, "一行目");
+    await userEvent.keyboard("{Shift>}{Enter}{/Shift}");
+    await userEvent.type(textarea, "二行目");
+
+    await expect.poll(heightOf).toBeGreaterThan(oneLine);
+
+    await userEvent.keyboard("{Enter}");
+
+    await expect.poll(heightOf).toBe(oneLine);
+  });
+
   it("記録済みのメモを開くと、入力欄の形に戻して書き直せる", async () => {
     // Arrange
     saveTimelineEvents([
