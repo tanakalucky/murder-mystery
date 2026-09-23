@@ -20,8 +20,14 @@ release. Add a tool name to select part of the graph. For example, run
 ## Review Checklist
 
 - [ ] Run `vp install` after pulling remote changes and before getting started.
-- [ ] Run `vp check` and `vp run -r test` to format, lint, type check and test changes. Each app splits its tests into a Node `unit` project and a Chromium `browser` project in its own `vite.config.ts`, so run tests through each app's `test` script; a root `vp test` excludes `apps/**`.
+- [ ] Run `vp check` and `vp test` to format, lint, type check and test changes.
 - [ ] Check if there are `vite.config.ts` tasks or `package.json` scripts necessary for validation, run via `vp run <script>`.
 - [ ] If setup, runtime, or package-manager behavior looks wrong, run `vp env doctor` and include its output when asking for help.
 
 <!--VITE PLUS END-->
+
+# Repository Notes
+
+## Running Tests
+
+Run tests with `vp run -r test` (or `vp run ready`, which CI uses) instead of the `vp test` in the checklist above. Each app splits its tests into a Node `unit` project and a Chromium `browser` project in its own `vite.config.ts`, and Vitest does not expand those when the app configs are referenced as projects from the root, so the root `vite.config.ts` excludes `apps/**` and a root `vp test` runs no app tests.
