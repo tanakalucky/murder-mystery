@@ -103,15 +103,36 @@ vp -C apps/pdf-manager test
 
 ### デプロイ
 
-Cloudflare Workers の Static Assets として配信する。`@cloudflare/vite-plugin` がビルド時に
-`dist/wrangler.json` を生成し、`wrangler deploy` はそれにリダイレクトされる。
+Cloudflare Workers の Static Assets として `tanakalucky.com/pdf-manager` で配信する。
+`@cloudflare/vite-plugin` がビルド時に `dist/<Worker 名>/wrangler.json` を生成し、`wrangler deploy` は
+`.wrangler/deploy/config.json` を経由してそれにリダイレクトされる。
 
 ```bash
 vp run deploy      # pdf-manager のビルド + wrangler deploy
 ```
 
-Worker のコードは持たないため `worker-configuration.d.ts` はコミットしていない。バインディングを
-追加して型が必要になったら `vp -C apps/pdf-manager run cf-typegen` で生成する。
+#### パス配下での配信
+
+アプリはドメイン直下ではなく 1 つのパスの下に載せる。パスは 2 か所で揃える。
+
+| 場所             | 値                                                                |
+| ---------------- | ----------------------------------------------------------------- |
+| `vite.config.ts` | `base: "/pdf-manager/"`（HTML が参照するアセットの URL が変わる） |
+| `wrangler.jsonc` | `routes` の `tanakalucky.com/pdf-manager` と `…/pdf-manager/*`    |
+
+Worker のルートはリクエストのパスをそのまま届けるが、ビルド成果物はプレフィックス無しで
+`dist/client/` 直下に並ぶ（`@cloudflare/vite-plugin` は `base` を見て配置を変えない）。そのため
+`worker/index.ts` がプレフィックスを外してから Static Assets に渡す（`run_worker_first: true`）。
+
+- `/pdf-manager` は `/pdf-manager/` へリダイレクトし、パスの外は 404 を返す。
+- Static Assets が返すリダイレクト（`/index.html` → `/`）の `Location` にはプレフィックスを付け直す。
+- 開発サーバーでは `base` を Vite 自身が扱うので、Worker はパスを外さずに渡す。
+  `vp dev` のあとは `http://localhost:5173/pdf-manager/` を開く。
+- `workers.dev` のプレビューも同じ Worker なので、URL の末尾に `/pdf-manager/` を付けて開く。
+
+Worker が使うバインディングは `ASSETS` だけなので、`Env` は `worker/index.ts` に手で書いていて
+`worker-configuration.d.ts` はコミットしていない。バインディングを増やして型が必要になったら
+`vp -C apps/pdf-manager run cf-typegen` で生成する。
 
 ## apps/memo (Murder Mystery Memo)
 
@@ -137,6 +158,10 @@ apps/memo/src/
 
 ルーティングは `react-router` で `/`・`/memo`・`/timetable`・`/settings` に分ける。SPA なので直リンクは
 Cloudflare 側の `not_found_handling: "single-page-application"` が受ける。
+
+`tanakalucky.com/murder-mystery-memo` で配信する。仕組みは pdf-manager の「パス配下での配信」と
+同じで、ルーターの `basename` にも Vite の `base`（`import.meta.env.BASE_URL`）を渡している。
+そのためアプリ内のリンクは `"/memo"` のようにプレフィックス抜きで書く。
 
 ### メモと、人物・場所・時刻の持ち方
 
@@ -192,7 +217,7 @@ vp -C apps/memo test
 - `deploy.yml` は `wrangler.jsonc` を持つ `apps/*` を列挙して matrix に流す。Worker 名や
   バインディングはアプリ側の `wrangler.jsonc` にあり、ワークフローには出てこない。
   **アプリを増やすときにやることは `apps/` にディレクトリを作ることだけ。**
-- プレビューの別名はブランチ名から作る。長さの上限は `dist/wrangler.json` の Worker 名から
+- プレビューの別名はブランチ名から作る。長さの上限は、ビルドが生成した `wrangler.json` の Worker 名から
   アプリごとに計算する（ホスト名の 63 文字から Worker 名と区切りを引いた残り）。
 - プレビューに使う `wrangler versions upload` は既にある Worker にバージョンを載せるだけで、
   Worker 自体は作れない。そのため PR ではデプロイ前に Cloudflare API へ Worker の有無を
@@ -203,6 +228,8 @@ vp -C apps/memo test
   その波及先だけに絞る。pnpm が依存グラフから波及先を出すので、依存関係を YAML に書く必要はない。
 
 `CLOUDFLARE_API_TOKEN` と `CLOUDFLARE_ACCOUNT_ID` をリポジトリの Secrets に登録しておくこと。
+各アプリは `wrangler.jsonc` の `routes` で `tanakalucky.com` のパスに紐づくため、トークンには
+`tanakalucky.com` ゾーンの「Workers ルート: 編集」権限も要る。
 
 ## shadcn/ui
 

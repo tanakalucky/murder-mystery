@@ -5,6 +5,8 @@ import { defineConfig } from "vite-plus";
 import { playwright } from "vite-plus/test/browser-playwright";
 
 export default defineConfig({
+  // tanakalucky.com/murder-mystery-memo で配信する。wrangler.jsonc の routes と揃えること
+  base: "/murder-mystery-memo/",
   plugins: [react(), cloudflare(), tailwindcss()],
   test: {
     passWithNoTests: true,

@@ -5,6 +5,8 @@ import { defineConfig } from "vite-plus";
 import { playwright } from "vite-plus/test/browser-playwright";
 
 export default defineConfig({
+  // tanakalucky.com/pdf-manager で配信する。wrangler.jsonc の routes と揃えること
+  base: "/pdf-manager/",
   plugins: [react(), cloudflare(), tailwindcss()],
   test: {
     passWithNoTests: true,
