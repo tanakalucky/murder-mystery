@@ -45,6 +45,9 @@ const candidatesFor = (masters: TimelineMasters, mention: Mention): readonly str
   return pool[mention.kind].filter((item) => item.toLowerCase().includes(query));
 };
 
+const supportsPopover =
+  typeof HTMLElement !== "undefined" && Object.hasOwn(HTMLElement.prototype, "popover");
+
 const anchorAtCaret = (textarea: HTMLTextAreaElement): MenuAnchor =>
   getTextareaCaretCoordinates(textarea, textarea.selectionStart);
 
@@ -106,11 +109,15 @@ export const MentionTextarea = ({
   }, [value]);
 
   // 候補メニューは popover にして最上位レイヤーに出す。書き直しの入力欄はスクロールする一覧の中にあり、
-  // 普通の absolute では上に開いたメニューが一覧の枠で切り取られて、見えず押せなくなるため
+  // 普通の absolute では上に開いたメニューが一覧の枠で切り取られて、見えず押せなくなるため。
+  // Popover API の無いブラウザ（Safari 16 以前など）では popover 属性が効かないので、
+  // fixed のまま出す（祖先に transform が無ければ overflow には切り取られない）
   const isMenuOpen = menu !== null;
   useLayoutEffect(() => {
     const listbox = listboxRef.current;
-    if (isMenuOpen && listbox !== null && !listbox.matches(":popover-open")) listbox.showPopover();
+    if (!isMenuOpen || listbox === null || !supportsPopover) return;
+
+    if (!listbox.matches(":popover-open")) listbox.showPopover();
   }, [isMenuOpen]);
 
   // 最上位レイヤーはビューポート基準なので、一覧や画面がスクロールしたらキャレットに付け直す
@@ -233,8 +240,9 @@ export const MentionTextarea = ({
           ref={listboxRef}
           popover="manual"
           style={{ top: `${menu.top - 4}px`, left: `${menu.left}px` }}
-          // popover の既定（画面中央に置く inset と margin）を外し、キャレットの上に下端を揃える
-          className="inset-auto m-0 max-h-50 min-w-30 -translate-y-full overflow-y-auto rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg"
+          // popover の既定（画面中央に置く inset と margin）を外し、キャレットの上に下端を揃える。
+          // fixed は Popover API が無いときの受け皿で、あるときは既定と同じなので何も変わらない
+          className="fixed inset-auto z-50 m-0 max-h-50 min-w-30 -translate-y-full overflow-y-auto rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg"
           role="listbox"
         >
           {menu.items.map((item, index) => (
