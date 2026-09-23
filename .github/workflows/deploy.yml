@@ -75,9 +75,11 @@ jobs:
       - name: Build
         run: vp -C "${{ matrix.app }}" build
 
-      # @cloudflare/vite-plugin が書き出した dist/wrangler.json に Worker 名が
-      # 入っている。プレビュー URL のホスト名は 63 文字までなので、Worker 名と
-      # 区切りの "-" を引いた残りが別名に使える長さになる。
+      # @cloudflare/vite-plugin が書き出した wrangler.json に Worker 名が入っている。
+      # Worker のコードを持つアプリでは dist/<Worker 名>/ に置かれるので、場所は
+      # wrangler と同じく .wrangler/deploy/config.json のリダイレクトから引く。
+      # プレビュー URL のホスト名は 63 文字までなので、Worker 名と区切りの "-" を
+      # 引いた残りが別名に使える長さになる。
       - name: Derive the preview alias
         if: github.event_name == 'pull_request'
         id: alias
@@ -86,7 +88,15 @@ jobs:
           APP: ${{ matrix.app }}
           BRANCH: ${{ github.head_ref }}
         run: |
-          worker=$(python3 -c "import json; print(json.load(open('$APP/dist/wrangler.json'))['name'])")
+          worker=$(
+            python3 - "$APP" <<'PY'
+          import json, os, sys
+
+          redirect = os.path.join(sys.argv[1], ".wrangler", "deploy", "config.json")
+          config = os.path.join(os.path.dirname(redirect), json.load(open(redirect))["configPath"])
+          print(json.load(open(config))["name"])
+          PY
+          )
           budget=$((63 - ${#worker} - 1))
           alias=$(
             printf '%s' "$BRANCH" |
