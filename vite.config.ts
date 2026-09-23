@@ -28,4 +28,10 @@ export default defineConfig({
   run: {
     cache: true,
   },
+  test: {
+    // App tests need each app's unit (Node) / browser (Chromium) projects, which Vitest does not
+    // expand when an app config is referenced as a project, so run them with `vp run -r test` instead.
+    exclude: ["**/node_modules/**", "**/.git/**", "apps/**"],
+    passWithNoTests: true,
+  },
 });
