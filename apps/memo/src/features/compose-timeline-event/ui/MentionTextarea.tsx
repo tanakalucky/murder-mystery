@@ -23,12 +23,15 @@ interface Props {
   onCancel?: () => void;
 }
 
-interface Menu {
+/** ビューポート上のキャレットの位置。入力欄は画面下部にあるので、ここから上に開く */
+interface MenuAnchor {
+  readonly top: number;
+  readonly left: number;
+}
+
+interface Menu extends MenuAnchor {
   readonly mention: Mention;
   readonly items: readonly string[];
-  /** 入力欄を包む要素から見たキャレットの位置。入力欄は画面下部にあるので上に開く */
-  readonly bottom: number;
-  readonly left: number;
 }
 
 const candidatesFor = (masters: TimelineMasters, mention: Mention): readonly string[] => {
@@ -41,6 +44,12 @@ const candidatesFor = (masters: TimelineMasters, mention: Mention): readonly str
 
   return pool[mention.kind].filter((item) => item.toLowerCase().includes(query));
 };
+
+const supportsPopover =
+  typeof HTMLElement !== "undefined" && Object.hasOwn(HTMLElement.prototype, "popover");
+
+const anchorAtCaret = (textarea: HTMLTextAreaElement): MenuAnchor =>
+  getTextareaCaretCoordinates(textarea, textarea.selectionStart);
 
 /**
  * 中身の行数ちょうどの高さにする。1 行のメモに 3 行分の箱を出さないための調整で、
@@ -76,7 +85,7 @@ export const MentionTextarea = ({
   const [menu, setMenu] = useState<Menu | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const listboxRef = useRef<HTMLUListElement>(null);
   // 候補を確定したあとのカーソル位置。textarea の再描画を待ってから戻す
   const pendingCursorRef = useRef<number | null>(null);
 
@@ -99,6 +108,38 @@ export const MentionTextarea = ({
     textarea.setSelectionRange(cursorPosition, cursorPosition);
   }, [value]);
 
+  // 候補メニューは popover にして最上位レイヤーに出す。書き直しの入力欄はスクロールする一覧の中にあり、
+  // 普通の absolute では上に開いたメニューが一覧の枠で切り取られて、見えず押せなくなるため。
+  // Popover API の無いブラウザ（Safari 16 以前など）では popover 属性が効かないので、
+  // fixed のまま出す（祖先に transform が無ければ overflow には切り取られない）
+  const isMenuOpen = menu !== null;
+  useLayoutEffect(() => {
+    const listbox = listboxRef.current;
+    if (!isMenuOpen || listbox === null || !supportsPopover) return;
+
+    if (!listbox.matches(":popover-open")) listbox.showPopover();
+  }, [isMenuOpen]);
+
+  // 最上位レイヤーはビューポート基準なので、一覧や画面がスクロールしたらキャレットに付け直す
+  useEffect(() => {
+    if (!isMenuOpen) return;
+
+    const follow = () => {
+      const textarea = textareaRef.current;
+      if (textarea === null) return;
+
+      const anchor = anchorAtCaret(textarea);
+      setMenu((current) => (current === null ? null : { ...current, ...anchor }));
+    };
+
+    window.addEventListener("scroll", follow, { capture: true, passive: true });
+    window.addEventListener("resize", follow);
+    return () => {
+      window.removeEventListener("scroll", follow, { capture: true });
+      window.removeEventListener("resize", follow);
+    };
+  }, [isMenuOpen]);
+
   const openMenuAtCaret = (textarea: HTMLTextAreaElement) => {
     const mention = findMention(textarea.value, textarea.selectionStart);
     const items = mention === null ? [] : candidatesFor(masters, mention);
@@ -108,15 +149,7 @@ export const MentionTextarea = ({
       return;
     }
 
-    const caret = getTextareaCaretCoordinates(textarea, textarea.selectionStart);
-    const container = containerRef.current?.getBoundingClientRect();
-
-    setMenu({
-      mention,
-      items,
-      bottom: (container?.bottom ?? 0) - caret.top,
-      left: caret.left - (container?.left ?? 0),
-    });
+    setMenu({ mention, items, ...anchorAtCaret(textarea) });
     setActiveIndex(0);
   };
 
@@ -171,7 +204,7 @@ export const MentionTextarea = ({
   };
 
   return (
-    <div ref={containerRef} className="relative">
+    <div>
       <label className="sr-only" htmlFor={textareaId}>
         {label}
       </label>
@@ -204,8 +237,12 @@ export const MentionTextarea = ({
       {menu !== null && (
         <ul
           id={listboxId}
-          style={{ bottom: `${menu.bottom + 4}px`, left: `${menu.left}px` }}
-          className="absolute z-50 max-h-50 min-w-30 overflow-y-auto rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg"
+          ref={listboxRef}
+          popover="manual"
+          style={{ top: `${menu.top - 4}px`, left: `${menu.left}px` }}
+          // popover の既定（画面中央に置く inset と margin）を外し、キャレットの上に下端を揃える。
+          // fixed は Popover API が無いときの受け皿で、あるときは既定と同じなので何も変わらない
+          className="fixed inset-auto z-50 m-0 max-h-50 min-w-30 -translate-y-full overflow-y-auto rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg"
           role="listbox"
         >
           {menu.items.map((item, index) => (
