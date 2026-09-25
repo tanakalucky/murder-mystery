@@ -5,15 +5,7 @@ import { defineConfig } from "vite-plus";
 import { playwright } from "vite-plus/test/browser-playwright";
 
 export default defineConfig({
-  // tanakalucky.com/murder-mystery-memo で配信する。wrangler.jsonc の routes と揃えること
-  base: "/murder-mystery-memo/",
-  plugins: [
-    react(),
-    // Worker のコードを持つと、このプラグインは Worker 用の環境を作ってテスト中にも起動しようとし、
-    // Vitest の設定（`resolve.external`）と衝突して落ちる。テストは Worker を使わないので外す
-    process.env.VITEST ? [] : cloudflare(),
-    tailwindcss(),
-  ],
+  plugins: [react(), cloudflare(), tailwindcss()],
   test: {
     passWithNoTests: true,
     projects: [

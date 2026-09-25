@@ -6,20 +6,14 @@ import { SettingsPage } from "#/pages/settings";
 import { TimetablePage } from "#/pages/timetable";
 import { AppShell } from "#/widgets/app-shell";
 
-export const router = createBrowserRouter(
-  [
-    {
-      element: <AppShell />,
-      children: [
-        { index: true, element: <HomePage /> },
-        { path: "memo", element: <MemoPage /> },
-        { path: "timetable", element: <TimetablePage /> },
-        { path: "settings", element: <SettingsPage /> },
-      ],
-    },
-  ],
+export const router = createBrowserRouter([
   {
-    // Vite の `base` と揃える。リンクは "/memo" のようにアプリ内の絶対パスで書いてよい
-    basename: import.meta.env.BASE_URL,
+    element: <AppShell />,
+    children: [
+      { index: true, element: <HomePage /> },
+      { path: "memo", element: <MemoPage /> },
+      { path: "timetable", element: <TimetablePage /> },
+      { path: "settings", element: <SettingsPage /> },
+    ],
   },
-);
+]);
