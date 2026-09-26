@@ -1,17 +1,15 @@
 import { Button } from "@repo/ui/components/button";
-import { cn } from "@repo/ui/lib/utils";
 import { ArrowLeft } from "lucide-react";
 
 interface Props {
   name: string;
   src: string;
-  isVisible: boolean;
   onBack: () => void;
 }
 
-export const PdfViewerLayer = ({ name, src, isVisible, onBack }: Props) => {
+export const PdfViewerLayer = ({ name, src, onBack }: Props) => {
   return (
-    <div className={cn("fixed inset-0 z-10 flex-col bg-background", isVisible ? "flex" : "hidden")}>
+    <div className="flex h-full flex-col">
       <div className="flex flex-none items-center gap-3 border-b border-border px-4 py-3">
         <Button variant="secondary" onClick={onBack}>
           <ArrowLeft aria-hidden />

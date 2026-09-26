@@ -1,5 +1,3 @@
-import { cn } from "@repo/ui/lib/utils";
-
 import { PdfCard } from "#/entities/pdf-document";
 import { DeleteAllButton } from "#/features/delete-all-pdfs";
 import { ThemeToggle } from "#/features/toggle-theme";
@@ -9,15 +7,14 @@ import type { PdfListItem } from "../model/use-pdf-manager";
 
 interface Props {
   items: readonly PdfListItem[];
-  isVisible: boolean;
   onFilesAdded: (files: readonly File[]) => void;
   onOpen: (id: string) => void;
   onDeleteAll: () => void;
 }
 
-export const PdfListLayer = ({ items, isVisible, onFilesAdded, onOpen, onDeleteAll }: Props) => {
+export const PdfListLayer = ({ items, onFilesAdded, onOpen, onDeleteAll }: Props) => {
   return (
-    <div className={cn("h-full flex-col", isVisible ? "flex" : "hidden")}>
+    <div className="flex h-full flex-col">
       <div className="flex flex-none items-center gap-4 border-b border-border px-4 py-3">
         <span className="mr-auto text-lg font-semibold">PDF Manager</span>
 
