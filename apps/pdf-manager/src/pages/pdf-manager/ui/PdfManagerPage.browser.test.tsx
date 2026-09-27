@@ -48,8 +48,9 @@ describe("PdfManagerPage", () => {
     await expect
       .element(screen.getByRole("button", { name: /深夜の劇場_シナリオ\.pdf/ }))
       .toBeVisible();
-    const cards = screen.container.querySelectorAll("li");
-    expect([...cards].map((element) => element.textContent)).toEqual([
+    // カードの textContent はサムネイルの生成状態（読み込み中… など）を含むため、ファイル名だけを比べる
+    const cards = screen.container.querySelectorAll("li button");
+    expect([...cards].map((element) => element.getAttribute("title"))).toEqual([
       "深夜の劇場_シナリオ.pdf",
       "解答編_進行表.pdf",
     ]);
