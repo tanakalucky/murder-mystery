@@ -75,9 +75,8 @@ jobs:
       - name: Build
         run: vp -C "${{ matrix.app }}" build
 
-      # @cloudflare/vite-plugin が書き出した wrangler.json に Worker 名が入っている。
-      # Worker のコードを持つアプリでは dist/<Worker 名>/ に置かれるので、場所は
-      # wrangler と同じく .wrangler/deploy/config.json のリダイレクトから引く。
+      # Worker 名はアプリの wrangler.jsonc から引く。JSONC なのでコメントと末尾の
+      # カンマを、文字列の中身には触れずに取り除いてから読む。
       # プレビュー URL のホスト名は 63 文字までなので、Worker 名と区切りの "-" を
       # 引いた残りが別名に使える長さになる。
       - name: Derive the preview alias
@@ -90,11 +89,14 @@ jobs:
         run: |
           worker=$(
             python3 - "$APP" <<'PY'
-          import json, os, sys
+          import json, os, re, sys
 
-          redirect = os.path.join(sys.argv[1], ".wrangler", "deploy", "config.json")
-          config = os.path.join(os.path.dirname(redirect), json.load(open(redirect))["configPath"])
-          print(json.load(open(config))["name"])
+          text = open(os.path.join(sys.argv[1], "wrangler.jsonc"), encoding="utf-8").read()
+          # 文字列はそのまま残し、それ以外のコメントと末尾のカンマだけを消す
+          string = r'("(?:\\.|[^"\\])*")'
+          text = re.sub(string + r"|//[^\n]*|/\*.*?\*/", lambda m: m.group(1) or "", text, flags=re.S)
+          text = re.sub(string + r"|,(?=\s*[}\]])", lambda m: m.group(1) or "", text)
+          print(json.loads(text)["name"])
           PY
           )
           budget=$((63 - ${#worker} - 1))
@@ -108,8 +110,8 @@ jobs:
           echo "worker=$worker" >> "$GITHUB_OUTPUT"
           echo "value=${alias%-}" >> "$GITHUB_OUTPUT"
 
-      # ワークスペースの wrangler をそのまま使う。wrangler は dist/wrangler.json
-      # にリダイレクトするので、Worker 名やバインディングはアプリ側の設定だけで決まる。
+      # ワークスペースの wrangler をそのまま使う。wrangler はアプリの wrangler.jsonc を
+      # 読むので、Worker 名やバインディングはアプリ側の設定だけで決まる。
       - name: Deploy
         shell: bash
         env:

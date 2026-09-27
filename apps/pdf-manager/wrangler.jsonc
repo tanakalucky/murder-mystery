@@ -7,8 +7,9 @@
     "enabled": true,
   },
   "upload_source_maps": true,
-  // The Vite plugin points `assets.directory` at the client build output.
+  // Worker のコードは持たず、`vp build` の出力をそのまま Static Assets として配信する
   "assets": {
+    "directory": "./dist",
     "not_found_handling": "single-page-application",
   },
   // DNS レコードと証明書は Cloudflare が作る
