@@ -103,9 +103,8 @@ vp -C apps/pdf-manager test
 
 ### デプロイ
 
-Cloudflare Workers の Static Assets として `pdf.tanakalucky.com` で配信する。`@cloudflare/vite-plugin` が
-ビルド時に `wrangler.json` を生成し、`wrangler deploy` は `.wrangler/deploy/config.json` を経由して
-それにリダイレクトされる。
+Cloudflare Workers の Static Assets として `pdf.tanakalucky.com` で配信する。Worker のコードは持たず、
+`wrangler.jsonc` の `assets.directory` が指す `dist/`（`vp build` の出力）をそのままアップロードする。
 
 ```bash
 vp run deploy      # pdf-manager のビルド + wrangler deploy
@@ -199,7 +198,7 @@ vp -C apps/memo test
 - `deploy.yml` は `wrangler.jsonc` を持つ `apps/*` を列挙して matrix に流す。Worker 名や
   バインディングはアプリ側の `wrangler.jsonc` にあり、ワークフローには出てこない。
   **アプリを増やすときにやることは `apps/` にディレクトリを作ることだけ。**
-- プレビューの別名はブランチ名から作る。長さの上限は、ビルドが生成した `wrangler.json` の Worker 名から
+- プレビューの別名はブランチ名から作る。長さの上限は、アプリの `wrangler.jsonc` の Worker 名から
   アプリごとに計算する（ホスト名の 63 文字から Worker 名と区切りを引いた残り）。
 - プレビューに使う `wrangler versions upload` は既にある Worker にバージョンを載せるだけで、
   Worker 自体は作れない。そのため PR ではデプロイ前に Cloudflare API へ Worker の有無を
