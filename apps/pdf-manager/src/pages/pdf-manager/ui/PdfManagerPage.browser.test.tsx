@@ -95,6 +95,76 @@ describe("PdfManagerPage", () => {
     expect(screen.container.querySelectorAll("iframe")).toHaveLength(1);
   });
 
+  it("ビューアの前へ・次へで一覧の並び順どおりに PDF を移動できる", async () => {
+    // Arrange
+    await savePdfDocument(createPdf("id-1", "第1幕.pdf", 100));
+    await savePdfDocument(createPdf("id-2", "第2幕.pdf", 200));
+    await savePdfDocument(createPdf("id-3", "第3幕.pdf", 300));
+    const screen = await renderPage();
+    const prevButton = screen.getByRole("button", { name: "前の PDF" });
+    const nextButton = screen.getByRole("button", { name: "次の PDF" });
+    const visibleIframeTitle = () =>
+      [...screen.container.querySelectorAll("iframe")].find((iframe) => iframe.checkVisibility())
+        ?.title;
+
+    // Act
+    await screen.getByRole("button", { name: /第2幕\.pdf/ }).click();
+    await nextButton.click();
+
+    // Assert
+    await expect.poll(visibleIframeTitle).toBe("第3幕.pdf");
+
+    // Act
+    await prevButton.click();
+    await prevButton.click();
+
+    // Assert
+    await expect.poll(visibleIframeTitle).toBe("第1幕.pdf");
+  });
+
+  it("先頭の PDF では前へ、末尾の PDF では次へを押せない", async () => {
+    // Arrange
+    await savePdfDocument(createPdf("id-1", "第1幕.pdf", 100));
+    await savePdfDocument(createPdf("id-2", "第2幕.pdf", 200));
+    const screen = await renderPage();
+    const prevButton = screen.getByRole("button", { name: "前の PDF" });
+    const nextButton = screen.getByRole("button", { name: "次の PDF" });
+
+    // Act
+    await screen.getByRole("button", { name: /第1幕\.pdf/ }).click();
+
+    // Assert
+    await expect.element(prevButton).toBeDisabled();
+    await expect.element(nextButton).toBeEnabled();
+
+    // Act
+    await nextButton.click();
+
+    // Assert
+    await expect.element(prevButton).toBeEnabled();
+    await expect.element(nextButton).toBeDisabled();
+  });
+
+  it("前へ・次へで行き来しても開いた PDF ごとの iframe が使い回される", async () => {
+    // Arrange
+    await savePdfDocument(createPdf("id-1", "第1幕.pdf", 100));
+    await savePdfDocument(createPdf("id-2", "第2幕.pdf", 200));
+    const screen = await renderPage();
+    const prevButton = screen.getByRole("button", { name: "前の PDF" });
+    const nextButton = screen.getByRole("button", { name: "次の PDF" });
+
+    // Act
+    await screen.getByRole("button", { name: /第1幕\.pdf/ }).click();
+    await nextButton.click();
+    await expect.poll(() => screen.container.querySelectorAll("iframe").length).toBe(2);
+    const iframes = [...screen.container.querySelectorAll("iframe")];
+    await prevButton.click();
+    await nextButton.click();
+
+    // Assert
+    expect([...screen.container.querySelectorAll("iframe")]).toEqual(iframes);
+  });
+
   it("アップロードした PDF が一覧に追加され、次回起動用に保存される", async () => {
     // Arrange
     const screen = await renderPage();

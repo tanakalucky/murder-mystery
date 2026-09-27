@@ -1,5 +1,6 @@
 import { Activity } from "react";
 
+import { findAdjacentPdfs } from "../lib/find-adjacent-pdfs";
 import { usePdfDocuments } from "../model/use-pdf-documents";
 import { usePdfThumbnails } from "../model/use-pdf-thumbnails";
 import { usePdfViewer } from "../model/use-pdf-viewer";
@@ -36,9 +37,17 @@ export const PdfManagerPage = () => {
         const src = viewer.viewerSrcs.get(pdf.id);
         if (src === undefined) return null;
 
+        const { prev, next } = findAdjacentPdfs(documents, pdf.id);
+
         return (
           <Activity key={pdf.id} mode={viewer.activeId === pdf.id ? "visible" : "hidden"}>
-            <PdfViewerLayer name={pdf.name} src={src} onBack={viewer.close} />
+            <PdfViewerLayer
+              name={pdf.name}
+              src={src}
+              onBack={viewer.close}
+              onPrev={prev && (() => viewer.open(prev))}
+              onNext={next && (() => viewer.open(next))}
+            />
           </Activity>
         );
       })}
