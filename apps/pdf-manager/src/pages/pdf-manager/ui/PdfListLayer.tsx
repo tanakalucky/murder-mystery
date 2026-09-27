@@ -1,24 +1,29 @@
-import { PdfCard } from "#/entities/pdf-document";
+import { PdfCard, type PdfDocument, type ThumbnailState } from "#/entities/pdf-document";
 import { DeleteAllButton } from "#/features/delete-all-pdfs";
 import { ThemeToggle } from "#/features/toggle-theme";
 import { DropZone, UploadButton } from "#/features/upload-pdf";
 
-import type { PdfListItem } from "../model/use-pdf-manager";
-
 interface Props {
-  items: readonly PdfListItem[];
+  documents: readonly PdfDocument[];
+  getThumbnail: (id: string) => ThumbnailState;
   onFilesAdded: (files: readonly File[]) => void;
-  onOpen: (id: string) => void;
+  onOpen: (pdf: PdfDocument) => void;
   onDeleteAll: () => void;
 }
 
-export const PdfListLayer = ({ items, onFilesAdded, onOpen, onDeleteAll }: Props) => {
+export const PdfListLayer = ({
+  documents,
+  getThumbnail,
+  onFilesAdded,
+  onOpen,
+  onDeleteAll,
+}: Props) => {
   return (
     <div className="flex h-full flex-col">
       <div className="flex flex-none items-center gap-4 border-b border-border px-4 py-3">
         <span className="mr-auto text-lg font-semibold">PDF Manager</span>
 
-        <DeleteAllButton count={items.length} onConfirm={onDeleteAll} />
+        <DeleteAllButton count={documents.length} onConfirm={onDeleteAll} />
 
         <UploadButton onFilesSelected={onFilesAdded} />
 
@@ -26,14 +31,14 @@ export const PdfListLayer = ({ items, onFilesAdded, onOpen, onDeleteAll }: Props
       </div>
 
       <DropZone onFilesDropped={onFilesAdded} className="min-h-0 flex-1 overflow-auto p-6">
-        {items.length > 0 ? (
+        {documents.length > 0 ? (
           <ul className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-4">
-            {items.map((item) => (
-              <li key={item.document.id} className="contents">
+            {documents.map((pdf) => (
+              <li key={pdf.id} className="contents">
                 <PdfCard
-                  name={item.document.name}
-                  thumbnail={item.thumbnail}
-                  onOpen={() => onOpen(item.document.id)}
+                  name={pdf.name}
+                  thumbnail={getThumbnail(pdf.id)}
+                  onOpen={() => onOpen(pdf)}
                 />
               </li>
             ))}
