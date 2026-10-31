@@ -29,10 +29,13 @@ interface Props {
 export const SidebarNav = ({ mobile = false }: Props) => (
   <div className={mobile ? "px-2 py-1.5" : "flex h-full flex-col px-5 py-8"}>
     {!mobile && (
-      <div className="px-3 pb-10 font-serif text-3xl leading-tight tracking-wide text-primary">
-        Mystery
-        <br />
-        Memo
+      <div className="flex items-start gap-3 px-3 pb-10">
+        <ThemeToggle />
+        <span className="font-serif text-3xl leading-tight tracking-wide text-primary">
+          Mystery
+          <br />
+          Memo
+        </span>
       </div>
     )}
 
@@ -66,7 +69,6 @@ export const SidebarNav = ({ mobile = false }: Props) => (
     {!mobile && (
       <div className="flex items-center justify-between border-t border-border px-3 pt-5">
         <span className="font-serif text-sm text-muted-foreground">Mystery Memo</span>
-        <ThemeToggle />
       </div>
     )}
   </div>

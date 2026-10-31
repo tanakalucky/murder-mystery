@@ -68,4 +68,34 @@ describe("AppShell", () => {
       .element(main.getByRole("link", { name: "タイムラインメモ", exact: true }))
       .toBeVisible();
   });
+
+  it("テーマを切り替え、画面を開き直しても選択を保持する", async () => {
+    // Arrange
+    localStorage.setItem("theme", "light");
+    const screen = await renderApp();
+
+    // Act
+    await screen.getByRole("button", { name: "ダークモードに切り替え", exact: true }).click();
+
+    // Assert
+    expect(localStorage.getItem("theme")).toBe("dark");
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
+
+    // Act
+    await screen.unmount();
+    const reopened = await renderApp();
+
+    // Assert
+    await expect
+      .element(reopened.getByRole("button", { name: "ライトモードに切り替え", exact: true }))
+      .toBeVisible();
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
+
+    // Act
+    await reopened.getByRole("button", { name: "ライトモードに切り替え", exact: true }).click();
+
+    // Assert
+    expect(localStorage.getItem("theme")).toBe("light");
+    expect(document.documentElement.classList.contains("light")).toBe(true);
+  });
 });
