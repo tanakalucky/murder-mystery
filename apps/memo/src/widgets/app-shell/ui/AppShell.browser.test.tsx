@@ -29,36 +29,43 @@ const renderApp = () => {
 describe("AppShell", () => {
   beforeEach(() => localStorage.clear());
 
-  it("ホームの主操作でメモを開き、最上部のメニューで各画面へ移動できる", async () => {
+  it("ホームを先頭に並べ、ホームと各画面を往復できる", async () => {
     // Arrange
     const screen = await renderApp();
+    const nav = screen.getByRole("navigation", { name: "メインナビゲーション" });
+    const main = screen.getByRole("main");
+
+    // Assert: PC用とスマホ用は同じ順序にする
+    for (const navigation of screen.container.querySelectorAll("nav")) {
+      expect(
+        [...navigation.querySelectorAll("a")].map((link) => link.getAttribute("aria-label")),
+      ).toEqual(["ホーム", "タイムラインメモ", "タイムテーブル", "人物・場所・時刻"]);
+    }
 
     // Act
-    await screen.getByRole("link", { name: "メモを開く", exact: true }).click();
-
+    await main.getByRole("link", { name: "タイムラインメモ", exact: true }).click();
     // Assert
     await expect.element(screen.getByRole("heading", { name: "タイムラインメモ" })).toBeVisible();
     await expect
-      .element(screen.getByRole("link", { name: "タイムラインメモ", exact: true }))
+      .element(nav.getByRole("link", { name: "タイムラインメモ", exact: true }))
       .toHaveAttribute("aria-current", "page");
 
     // Act
-    await screen.getByRole("link", { name: "タイムテーブル", exact: true }).click();
+    await nav.getByRole("link", { name: "タイムテーブル", exact: true }).click();
     // Assert
     await expect.element(screen.getByRole("heading", { name: "タイムテーブル" })).toBeVisible();
 
     // Act
-    await screen.getByRole("link", { name: "人物・場所・時刻", exact: true }).click();
+    await nav.getByRole("link", { name: "人物・場所・時刻", exact: true }).click();
     // Assert
     await expect.element(screen.getByRole("heading", { name: "人物・場所・時刻" })).toBeVisible();
 
     // Act
-    await screen.getByRole("link", { name: "ホーム", exact: true }).click();
+    await nav.getByRole("link", { name: "ホーム", exact: true }).click();
     // Assert
+    await expect.element(main.getByRole("heading", { name: "ホーム", exact: true })).toBeVisible();
     await expect
-      .element(screen.getByRole("link", { name: "メモを開く", exact: true }))
+      .element(main.getByRole("link", { name: "タイムラインメモ", exact: true }))
       .toBeVisible();
-    await expect.element(screen.getByText("@人物　#場所　>時刻", { exact: true })).toBeVisible();
-    expect(screen.container.querySelectorAll("nav")).toHaveLength(1);
   });
 });
