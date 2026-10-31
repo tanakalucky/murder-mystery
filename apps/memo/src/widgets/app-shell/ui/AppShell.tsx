@@ -1,18 +1,13 @@
-import { SearchCheck } from "lucide-react";
 import { Outlet } from "react-router";
 
-import { ThemeToggle } from "#/features/toggle-theme";
+import { BrandThemeRow } from "./BrandThemeRow";
 
 import { SidebarNav } from "./SidebarNav";
 
 export const AppShell = () => (
   <div className="flex h-dvh flex-col md:flex-row">
     <header className="flex shrink-0 items-center gap-3 border-b border-border bg-sidebar px-4 py-2.5 text-sidebar-foreground md:hidden">
-      <ThemeToggle />
-      <span className="flex items-center gap-2 font-serif text-lg">
-        <SearchCheck className="size-5 text-primary" aria-hidden />
-        Mystery Memo
-      </span>
+      <BrandThemeRow />
     </header>
 
     <aside className="hidden h-dvh w-60 shrink-0 border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:block">

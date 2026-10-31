@@ -1,7 +1,7 @@
 import { CalendarDays, Home, NotebookPen, SlidersHorizontal } from "lucide-react";
 import { NavLink } from "react-router";
 
-import { ThemeToggle } from "#/features/toggle-theme";
+import { BrandThemeRow } from "./BrandThemeRow";
 
 const LINKS = [
   { to: "/", label: "ホーム", mobileLabel: "ホーム", Icon: Home, end: true },
@@ -29,13 +29,8 @@ interface Props {
 export const SidebarNav = ({ mobile = false }: Props) => (
   <div className={mobile ? "px-2 py-1.5" : "flex h-full flex-col px-5 py-8"}>
     {!mobile && (
-      <div className="flex items-start gap-3 px-3 pb-10">
-        <ThemeToggle />
-        <span className="font-serif text-3xl leading-tight tracking-wide text-primary">
-          Mystery
-          <br />
-          Memo
-        </span>
+      <div className="h-28 shrink-0 px-3">
+        <BrandThemeRow />
       </div>
     )}
 
@@ -65,11 +60,5 @@ export const SidebarNav = ({ mobile = false }: Props) => (
         </NavLink>
       ))}
     </nav>
-
-    {!mobile && (
-      <div className="flex items-center justify-between border-t border-border px-3 pt-5">
-        <span className="font-serif text-sm text-muted-foreground">Mystery Memo</span>
-      </div>
-    )}
   </div>
 );

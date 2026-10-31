@@ -73,9 +73,18 @@ describe("AppShell", () => {
     // Arrange
     localStorage.setItem("theme", "light");
     const screen = await renderApp();
+    const displaySettings = screen.getByRole("group", { name: "表示設定" });
+
+    // Assert: アプリ名とテーマ操作は同じブロックにまとめる
+    await expect.element(displaySettings.getByText("Mystery Memo", { exact: true })).toBeVisible();
+    expect(
+      screen.container.querySelector("aside")?.textContent?.match(/Mystery Memo/g),
+    ).toHaveLength(1);
 
     // Act
-    await screen.getByRole("button", { name: "ダークモードに切り替え", exact: true }).click();
+    await displaySettings
+      .getByRole("button", { name: "ダークモードに切り替え", exact: true })
+      .click();
 
     // Assert
     expect(localStorage.getItem("theme")).toBe("dark");
