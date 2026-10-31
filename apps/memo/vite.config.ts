@@ -17,6 +17,8 @@ export default defineConfig({
         },
       },
       {
+        // Prebundle the router before browser tests start; late discovery reloads React.
+        optimizeDeps: { include: ["react-router"] },
         test: {
           name: "browser",
           include: ["**/*.browser.test.{ts,tsx}"],
