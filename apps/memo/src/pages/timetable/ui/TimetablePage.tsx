@@ -14,29 +14,24 @@ export const TimetablePage = () => {
   // 登録だけして使っていない人物・時刻も軸になるので、軸が 1 本も立たないときだけ空にする
   if (columns.length === 0 && rows.length === 0) {
     return (
-      <div className="m-6 mx-auto flex w-full max-w-2xl flex-col items-center gap-6 rounded-2xl border border-border bg-card px-6 py-20 text-center text-card-foreground">
+      <div className="mx-auto my-5 flex w-[calc(100%-2rem)] max-w-2xl flex-col items-center gap-6 rounded-xl border border-border bg-card px-6 py-10 text-center text-card-foreground">
         <CalendarDays className="size-12 text-muted-foreground" aria-hidden />
 
-        <h1 className="text-xl font-bold">タイムテーブルにする人物も時刻もありません</h1>
-
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          タイムラインメモで人物や時刻を書き添えるか、設定画面で先に登録すると、ここに 時刻 × 人物
-          の表が組み上がります。
-        </p>
+        <h1 className="text-xl font-bold">タイムテーブル</h1>
 
         <div className="flex flex-wrap justify-center gap-3">
           <Link
             to="/memo"
             className="rounded-lg bg-primary px-6 py-3 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/80"
           >
-            メモを入力しに行く
+            メモへ
           </Link>
 
           <Link
             to="/settings"
             className="rounded-lg border border-border px-6 py-3 text-sm font-bold transition-colors hover:bg-accent hover:text-accent-foreground"
           >
-            人物・時刻を登録する
+            人物・時刻を登録
           </Link>
         </div>
       </div>
@@ -44,22 +39,24 @@ export const TimetablePage = () => {
   }
 
   return (
-    <div className="flex w-full flex-col gap-6 px-4 py-8 md:px-6 md:py-12">
-      <h1 className="text-2xl font-bold">タイムテーブル</h1>
+    <div className="flex h-full min-h-0 w-full flex-col gap-5 px-4 py-5 md:px-8 md:py-8">
+      <h1 className="shrink-0 border-b border-border pb-5 text-xl font-semibold tracking-wide md:text-2xl">
+        タイムテーブル
+      </h1>
 
       {/* 見出しを固定したまま縦横に送るため、スクロールは表の外枠が担う */}
-      <div className="max-h-[calc(100dvh-13rem)] w-full overflow-auto rounded-2xl border border-border">
+      <div className="min-h-0 w-full flex-1 overflow-auto rounded-xl border border-border">
         <table className="w-full border-separate border-spacing-0 text-left text-sm">
           <thead>
             <tr>
-              <th className="sticky top-0 left-0 z-30 min-w-30 bg-sidebar px-4 py-3 font-bold text-sidebar-foreground">
+              <th className="sticky top-0 left-0 z-30 min-w-24 bg-accent px-4 py-3 font-bold text-accent-foreground">
                 時間
               </th>
 
               {columns.map((playerCharacter) => (
                 <th
                   key={playerCharacter}
-                  className="sticky top-0 z-20 min-w-60 bg-sidebar px-4 py-3 font-bold text-sidebar-foreground"
+                  className="sticky top-0 z-20 min-w-52 bg-accent px-4 py-3 font-bold text-accent-foreground"
                 >
                   {playerCharacter === UNASSIGNED ? (
                     <span className="italic opacity-70">全体・未指定</span>

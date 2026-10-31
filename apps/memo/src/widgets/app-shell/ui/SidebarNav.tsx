@@ -1,61 +1,64 @@
-import { Button } from "@repo/ui/components/button";
-import { CalendarDays, Home, NotebookPen, SearchCheck, SlidersHorizontal, X } from "lucide-react";
+import { CalendarDays, Home, NotebookPen, SlidersHorizontal } from "lucide-react";
 import { NavLink } from "react-router";
 
-import { ThemeToggle } from "#/features/toggle-theme";
+import { BrandThemeRow } from "./BrandThemeRow";
 
 const LINKS = [
-  { to: "/", label: "ホーム", Icon: Home, end: true },
-  { to: "/memo", label: "タイムラインメモ", Icon: NotebookPen, end: false },
-  { to: "/timetable", label: "タイムテーブル", Icon: CalendarDays, end: false },
-  { to: "/settings", label: "人物・場所・時刻", Icon: SlidersHorizontal, end: false },
+  { to: "/", label: "ホーム", mobileLabel: "ホーム", Icon: Home, end: true },
+  { to: "/memo", label: "タイムラインメモ", mobileLabel: "メモ", Icon: NotebookPen, end: false },
+  {
+    to: "/timetable",
+    label: "タイムテーブル",
+    mobileLabel: "時刻表",
+    Icon: CalendarDays,
+    end: false,
+  },
+  {
+    to: "/settings",
+    label: "人物・場所・時刻",
+    mobileLabel: "登録",
+    Icon: SlidersHorizontal,
+    end: false,
+  },
 ] as const;
 
 interface Props {
-  /** ドロワーとして開いているときだけ渡す。閉じるボタンを出し、遷移でも閉じる */
-  onClose?: () => void;
+  mobile?: boolean;
 }
 
-export const SidebarNav = ({ onClose }: Props) => (
-  <div className="flex h-full flex-col">
-    <div className="flex items-center gap-3 border-b border-sidebar-border py-5 pr-4 pl-6">
-      <SearchCheck className="size-6 shrink-0" aria-hidden />
+export const SidebarNav = ({ mobile = false }: Props) => (
+  <div className={mobile ? "px-2 py-1.5" : "flex h-full flex-col px-5 py-8"}>
+    {!mobile && (
+      <div className="h-28 shrink-0 px-3">
+        <BrandThemeRow />
+      </div>
+    )}
 
-      <span className="flex-1 text-sm font-bold tracking-wide">Murder Mystery Memo</span>
-
-      {onClose !== undefined && (
-        <Button variant="ghost" size="icon" aria-label="メニューを閉じる" onClick={onClose}>
-          <X />
-        </Button>
-      )}
-    </div>
-
-    <nav className="flex flex-1 flex-col gap-2 p-4">
-      {LINKS.map(({ to, label, Icon, end }) => (
+    <nav
+      aria-label="メインナビゲーション"
+      className={mobile ? "grid grid-cols-4 gap-1" : "flex flex-1 flex-col gap-2"}
+    >
+      {LINKS.map(({ to, label, mobileLabel, Icon, end }) => (
         <NavLink
           key={to}
           to={to}
           end={end}
-          onClick={onClose}
+          aria-label={label}
           className={({ isActive }) =>
-            isActive
-              ? "flex items-center gap-3 rounded-lg bg-sidebar-primary px-4 py-3 text-sm font-bold text-sidebar-primary-foreground"
-              : "flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            [
+              mobile
+                ? "flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1 py-1 text-[10px]"
+                : "flex items-center gap-3 rounded-lg px-3 py-3 text-sm",
+              isActive
+                ? "bg-sidebar-accent font-semibold text-primary"
+                : "text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+            ].join(" ")
           }
         >
-          <Icon className="size-5 shrink-0" aria-hidden />
-          {label}
+          <Icon className={mobile ? "size-4 shrink-0" : "size-4.5 shrink-0"} aria-hidden />
+          {mobile ? mobileLabel : label}
         </NavLink>
       ))}
     </nav>
-
-    <div className="flex items-center justify-between gap-3 border-t border-sidebar-border px-6 py-4">
-      <div className="text-xs text-sidebar-foreground/60">
-        <p>Murder Mystery Memo</p>
-        <p>議論を整理し、真実を暴け</p>
-      </div>
-
-      <ThemeToggle />
-    </div>
   </div>
 );
