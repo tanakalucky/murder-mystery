@@ -1,11 +1,71 @@
 @import "@repo/ui/styles/base.css";
 
-/* Scan this app's own sources on top of what @repo/ui already registers. */
 @source "../../";
+
+/* Memo owns its palette; PDF Manager keeps the shared UI defaults. */
+:root {
+  --background: #f3f1ec;
+  --foreground: #282c29;
+  --card: #fffefa;
+  --card-foreground: #282c29;
+  --popover: #fffefa;
+  --popover-foreground: #282c29;
+  --primary: #2d6653;
+  --primary-foreground: #fffefa;
+  --secondary: #e9eee6;
+  --secondary-foreground: #315a49;
+  --muted: #eeeee6;
+  --muted-foreground: #62685f;
+  --accent: #e9f0e8;
+  --accent-foreground: #2d6653;
+  --border: #dddfd4;
+  --input: #cdd2c7;
+  --ring: #2d6653;
+  --sidebar: #fffefa;
+  --sidebar-foreground: #282c29;
+  --sidebar-primary: #2d6653;
+  --sidebar-primary-foreground: #fffefa;
+  --sidebar-accent: #e9f0e8;
+  --sidebar-accent-foreground: #2d6653;
+  --sidebar-border: #dddfd4;
+  --sidebar-ring: #2d6653;
+}
+
+.dark {
+  --background: #18211d;
+  --foreground: #e9eee7;
+  --card: #202d26;
+  --card-foreground: #e9eee7;
+  --popover: #202d26;
+  --popover-foreground: #e9eee7;
+  --primary: #a9d1b5;
+  --primary-foreground: #18211d;
+  --secondary: #2a3b30;
+  --secondary-foreground: #d5e6d7;
+  --muted: #26352c;
+  --muted-foreground: #b1bfb3;
+  --accent: #2a3b30;
+  --accent-foreground: #d5e6d7;
+  --border: #3b4e40;
+  --input: #4b6152;
+  --ring: #a9d1b5;
+  --sidebar: #202d26;
+  --sidebar-foreground: #e9eee7;
+  --sidebar-primary: #a9d1b5;
+  --sidebar-primary-foreground: #18211d;
+  --sidebar-accent: #2a3b30;
+  --sidebar-accent-foreground: #d5e6d7;
+  --sidebar-border: #3b4e40;
+  --sidebar-ring: #a9d1b5;
+}
 
 @layer base {
   html,
   body {
     @apply h-full;
+  }
+
+  a:focus-visible {
+    @apply outline-2 outline-offset-4 outline-ring;
   }
 }

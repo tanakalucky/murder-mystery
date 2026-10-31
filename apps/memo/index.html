@@ -13,7 +13,10 @@
           const stored = localStorage.getItem("theme");
           const theme = stored === "light" || stored === "dark" ? stored : null;
           const resolved =
-            theme ?? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+            theme ??
+            (stored === "system" && matchMedia("(prefers-color-scheme: dark)").matches
+              ? "dark"
+              : "light");
           document.documentElement.classList.add(resolved);
           document.documentElement.style.colorScheme = resolved;
         } catch {

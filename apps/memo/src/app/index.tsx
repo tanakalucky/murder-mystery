@@ -18,7 +18,7 @@ migrateMasters();
 
 createRoot(rootElement).render(
   <StrictMode>
-    <ThemeProvider>
+    <ThemeProvider defaultTheme="light">
       <ErrorBoundary>
         <RouterProvider router={router} />
       </ErrorBoundary>

@@ -32,7 +32,7 @@ describe("MemoPage", () => {
 
     const items = screen.container.querySelectorAll("ol > li");
     expect([...items].map((item) => item.textContent)).toEqual([
-      "@探偵10:00食堂アリバイ確認",
+      "10:00@探偵食堂アリバイ確認",
       "全員が集合した",
     ]);
   });
@@ -57,6 +57,26 @@ describe("MemoPage", () => {
 
     await expect.element(screen.getByText("アリバイ確認")).toBeVisible();
     expect(loadMasters()).toEqual({ players: ["探偵"], locations: ["食堂"], times: ["10:00"] });
+  });
+
+  it("記録ボタンで複数行のメモを保存し、入力欄を空に戻す", async () => {
+    // Arrange
+    const screen = await renderPage();
+    const textarea = screen.getByLabelText("メモ");
+    const recordButton = screen.getByRole("button", { name: "記録", exact: true });
+    await expect.element(recordButton).toBeDisabled();
+
+    // Act
+    await userEvent.fill(textarea, "@朝倉 #図書室 >20:00 一行目\n二行目");
+    await recordButton.click();
+
+    // Assert
+    expect(loadTimelineEvents()).toEqual([
+      { playerCharacter: "朝倉", location: "図書室", time: "20:00", body: "一行目 二行目" },
+    ]);
+    expect(loadMasters()).toEqual({ players: ["朝倉"], locations: ["図書室"], times: ["20:00"] });
+    await expect.element(textarea).toHaveValue("");
+    await expect.element(recordButton).toBeDisabled();
   });
 
   it("Shift+Enter では登録せずに改行する", async () => {

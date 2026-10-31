@@ -27,18 +27,10 @@ export const MemoPage = () => {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   return (
-    // 入力欄を画面下部に留めたまま、あふれたメモだけを送れるよう
-    // 画面の高さいっぱいの縦並びにして、スクロールは一覧が担う
-    <div className="mx-auto flex h-full w-full max-w-4xl flex-col gap-6 px-4 py-8 md:px-6 md:py-12">
-      <header className="flex flex-wrap items-start justify-between gap-4">
+    <div className="mx-auto flex h-full min-h-0 w-full max-w-7xl flex-col gap-5 px-4 py-5 md:px-8 md:py-8">
+      <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border pb-5">
         <div>
-          <h1 className="text-2xl font-bold">タイムラインメモ</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            <code className="rounded bg-muted px-1">@人物</code>{" "}
-            <code className="rounded bg-muted px-1">#場所</code>{" "}
-            <code className="rounded bg-muted px-1">&gt;時刻</code>{" "}
-            を混ぜて書くと、あとからタイムテーブルに並べ替えられます。
-          </p>
+          <h1 className="text-xl font-semibold tracking-wide md:text-2xl">タイムラインメモ</h1>
         </div>
 
         <DeleteAllButton
@@ -48,48 +40,100 @@ export const MemoPage = () => {
         />
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        {events.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground">
-            メモはまだありません。下の入力欄から記録を始めてください。
-          </p>
-        ) : (
-          <ol className="flex flex-col gap-4">
-            {events.map((event, index) => (
-              // メモは追加と書き直ししかできないので、並び順がそのまま識別子になる
-              <li key={index}>
-                {editingIndex === index ? (
-                  <EventEditor
-                    masters={masters}
-                    initialText={formatEventText(event)}
-                    onSubmit={(text) => {
-                      updateMemo(index, text);
-                      setEditingIndex(null);
-                    }}
-                    onCancel={() => setEditingIndex(null)}
-                  />
-                ) : (
-                  <EventCard
-                    event={event}
-                    action={
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label={`${String(index + 1)} 件目のメモを編集`}
-                        onClick={() => setEditingIndex(index)}
-                      >
-                        <Pencil />
-                      </Button>
-                    }
-                  />
-                )}
-              </li>
-            ))}
-          </ol>
-        )}
-      </div>
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-7 xl:grid-cols-[minmax(0,1fr)_15rem]">
+        <section aria-label="メモ一覧と入力" className="flex min-h-0 min-w-0 flex-col gap-4">
+          <div className="flex shrink-0 items-center gap-2 text-sm font-semibold">
+            記録したメモ{" "}
+            <span className="text-xs font-normal text-muted-foreground">{events.length} 件</span>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+            {events.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground">
+                メモはまだありません
+              </p>
+            ) : (
+              <ol className="flex flex-col gap-3">
+                {events.map((event, index) => (
+                  // メモは追加と書き直ししかできないので、並び順がそのまま識別子になる
+                  <li key={index}>
+                    {editingIndex === index ? (
+                      <EventEditor
+                        masters={masters}
+                        initialText={formatEventText(event)}
+                        onSubmit={(text) => {
+                          updateMemo(index, text);
+                          setEditingIndex(null);
+                        }}
+                        onCancel={() => setEditingIndex(null)}
+                      />
+                    ) : (
+                      <EventCard
+                        event={event}
+                        action={
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label={`${String(index + 1)} 件目のメモを編集`}
+                            onClick={() => setEditingIndex(index)}
+                          >
+                            <Pencil />
+                          </Button>
+                        }
+                      />
+                    )}
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
 
-      <EventComposer masters={masters} onSubmit={submitMemo} />
+          <EventComposer masters={masters} onSubmit={submitMemo} />
+        </section>
+        <aside aria-label="時系列のプレビュー" className="hidden min-h-0 overflow-y-auto xl:block">
+          <div className="rounded-xl border border-border bg-card p-5">
+            <h2 className="mb-5 text-sm font-semibold">時系列</h2>
+            {masters.times.length === 0 ? (
+              <p className="text-xs text-muted-foreground">時刻未登録</p>
+            ) : (
+              <ul className="flex flex-col gap-5 border-l border-border pl-3">
+                {masters.times.map((time) => (
+                  <li key={time} className="text-xs">
+                    <span className="font-semibold break-all text-primary tabular-nums">
+                      {time}
+                    </span>
+                    <span className="ml-2 text-muted-foreground">
+                      {events.filter((event) => event.time === time).length} 件
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {events.some((event) => !event.time) && (
+              <p className="mt-4 text-xs text-muted-foreground">
+                時刻未指定 {events.filter((event) => !event.time).length} 件
+              </p>
+            )}
+            <a
+              href="/timetable"
+              className="mt-5 inline-block text-xs font-medium text-primary underline-offset-4 hover:underline"
+            >
+              タイムテーブルへ →
+            </a>
+          </div>
+          <div className="mt-4 rounded-xl border border-border bg-card p-5">
+            <h2 className="mb-4 text-sm font-semibold">登場人物</h2>
+            <p className="text-xs leading-7 break-all text-muted-foreground">
+              {masters.players.join(" / ") || "人物未登録"}
+            </p>
+            <a
+              href="/settings"
+              className="mt-3 inline-block text-xs font-medium text-primary underline-offset-4 hover:underline"
+            >
+              人物・場所・時刻へ →
+            </a>
+          </div>
+        </aside>
+      </div>
     </div>
   );
 };

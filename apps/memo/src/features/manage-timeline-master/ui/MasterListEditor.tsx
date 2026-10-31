@@ -14,7 +14,6 @@ import { renameMasterValue } from "../model/rename-master-value";
 interface Props {
   kind: MasterKind;
   title: string;
-  hint: string;
   placeholder: string;
   values: readonly string[];
   /** 値ごとの「その値を使っているメモの件数」 */
@@ -27,7 +26,7 @@ interface PendingRename {
   readonly count: number;
 }
 
-export const MasterListEditor = ({ kind, title, hint, placeholder, values, usage }: Props) => {
+export const MasterListEditor = ({ kind, title, placeholder, values, usage }: Props) => {
   const addInputId = useId();
   const [draft, setDraft] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
@@ -76,14 +75,12 @@ export const MasterListEditor = ({ kind, title, hint, placeholder, values, usage
   };
 
   return (
-    <section className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-6 text-card-foreground">
+    <section className="flex min-w-0 flex-col gap-4 rounded-xl border border-border bg-card p-4 text-card-foreground">
       <div>
         <h2 className="font-bold">
           <span className="mr-1 text-primary">{prefix}</span>
           {title}
         </h2>
-
-        <p className="mt-1 text-sm text-muted-foreground">{hint}</p>
       </div>
 
       <form className="flex gap-2" onSubmit={handleAdd}>
@@ -107,7 +104,7 @@ export const MasterListEditor = ({ kind, title, hint, placeholder, values, usage
 
       {values.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
-          まだ登録されていません。
+          未登録
         </p>
       ) : (
         <ul className="flex flex-col gap-2">
@@ -159,7 +156,7 @@ export const MasterListEditor = ({ kind, title, hint, placeholder, values, usage
                       {value}
                     </span>
 
-                    <span className="text-xs text-muted-foreground">
+                    <span className="w-full text-xs text-muted-foreground">
                       {count === 0 ? "未使用" : `${String(count)} 件のメモで使用中`}
                     </span>
 
