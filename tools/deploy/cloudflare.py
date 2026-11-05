@@ -187,22 +187,22 @@ class Deployer:
         check_existing_preview(WORKERS[app], number)
         config = trusted_config(self.root, app, assets, preview=True)
         with TemporaryConfig(config) as path:
-            result = self.wrangler(app, ["preview", "--config", str(path), "--name",
+            self.wrangler(app, ["preview", "--config", str(path), "--name",
                                          f"pr-{positive_number(number)}", "--worker-name", WORKERS[app],
                                          "--tag", "murder-mystery-actions", "--ignore-base-config", "--json"],
                                    extra_env={"GITHUB_SHA": head, "REPOSITORY_URL": f"https://github.com/{REPOSITORY}",
                                               "PULL_REQUEST_NUMBER": str(number),
                                               "PULL_REQUEST_URL": f"https://github.com/{REPOSITORY}/pull/{number}"})
-        output = json.loads(result)
-        preview = output.get("preview", {})
-        if preview.get("name") != f"pr-{number}":
-            raise RuntimeError("Wrangler returned an unexpected Preview name")
-        validate_preview_deployment(preview, output.get("deployment", {}), number)
-        if output["deployment"].get("annotations", {}).get("workers/commit_sha") != head:
-            raise RuntimeError("Wrangler did not confirm the requested commit metadata")
+        # Wrangler's --json stdout can also contain asset-upload progress.
+        state = read_preview(WORKERS[app], number)
+        if state is None:
+            raise RuntimeError("Preview was not found after Wrangler completed; deployment outcome is unverified")
+        preview, deployment = state
+        if deployment.get("annotations", {}).get("workers/commit_sha") != head:
+            raise RuntimeError("Preview API did not confirm the requested commit metadata")
         urls = preview.get("urls") or []
         if not urls or not valid_preview_url(urls[0]):
-            raise RuntimeError("Wrangler returned no HTTPS Preview URL; check Worker preview_urls settings")
+            raise RuntimeError("Preview API returned no HTTPS Preview URL; check Worker preview_urls settings")
         return urls[0]
 
     def cleanup(self, app, number):
@@ -228,6 +228,11 @@ class Deployer:
 
 
 def check_existing_preview(worker, number):
+    state = read_preview(worker, number)
+    return None if state is None else state[0]
+
+
+def read_preview(worker, number):
     name = f"pr-{positive_number(number)}"
     preview = cloudflare_request(worker, name, allow_missing=True)
     if preview is None:
@@ -237,7 +242,7 @@ def check_existing_preview(worker, number):
         raise RuntimeError("Unexpected existing Preview identity")
     deployment = cloudflare_request(worker, identifier, suffix="/deployments/latest")
     validate_preview_deployment(preview, deployment, number)
-    return preview
+    return preview, deployment
 
 
 def validate_preview_deployment(preview, deployment, number):
