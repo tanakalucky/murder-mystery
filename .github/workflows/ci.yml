@@ -61,6 +61,20 @@ jobs:
       - name: Build
         run: vp run -r build
 
+      - name: E2E
+        run: vp run --no-cache -r test:e2e
+
+      - name: Save E2E failure details
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results
+          path: |
+            apps/memo/test-results/
+            apps/pdf-manager/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Save static assets for isolated deployment
         uses: actions/upload-artifact@v4
         with:

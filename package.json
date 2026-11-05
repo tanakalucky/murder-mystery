@@ -4,14 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "ready": "vp check && vp run -r test && vp run -r build",
+    "ready": "vp check && vp run -r test && vp run -r build && vp run --no-cache -r test:e2e",
     "dev": "vp run -r dev",
     "build": "vp run -r build",
     "deploy": "vp run -r build && vp run -r deploy",
     "ui": "vp run --no-cache --filter=@repo/ui ui",
     "ui:memo": "vp run --no-cache --filter=memo ui",
     "ui:pdf-manager": "vp run --no-cache --filter=pdf-manager ui",
-    "prepare": "vp config"
+    "prepare": "vp config",
+    "test:e2e": "vp run --no-cache -r test:e2e"
   },
   "devDependencies": {
     "vite": "catalog:",
