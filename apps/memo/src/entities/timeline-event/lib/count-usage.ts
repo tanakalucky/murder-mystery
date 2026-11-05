@@ -3,6 +3,13 @@ import type { TimelineEvent, TimelineField } from "../model/types";
 /** 項目ごとの「その値を使っているメモの件数」 */
 export type TimelineUsage = Readonly<Record<TimelineField, ReadonlyMap<string, number>>>;
 
+/** 使用中のマスタを消させないために、設定画面が件数を出すのに使う */
+export const countTimelineUsage = (events: readonly TimelineEvent[]): TimelineUsage => ({
+  playerCharacter: countField(events, "playerCharacter"),
+  location: countField(events, "location"),
+  time: countField(events, "time"),
+});
+
 const countField = (
   events: readonly TimelineEvent[],
   field: TimelineField,
@@ -18,10 +25,3 @@ const countField = (
 
   return counts;
 };
-
-/** 使用中のマスタを消させないために、設定画面が件数を出すのに使う */
-export const countTimelineUsage = (events: readonly TimelineEvent[]): TimelineUsage => ({
-  playerCharacter: countField(events, "playerCharacter"),
-  location: countField(events, "location"),
-  time: countField(events, "time"),
-});

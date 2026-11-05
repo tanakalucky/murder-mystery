@@ -108,21 +108,58 @@ class LayoutTests(unittest.TestCase):
                 self.assertIn(ROOT / f".ai-config/review/{name[7:]}.md", links)
 
     def test_codex_runtime_contract_is_present(self):
-        """空ファイルや条件欠落を参照先の存在だけで成功としない。"""
+        """モデル尊重・読取運用・独立委譲を参照先の存在だけで成功としない。"""
         # 準備 (Arrange)
         path = ROOT / ".agents/review-runtime.md"
         requirements = ("ユーザー指定のモデル・推論量", "未指定なら実行セッションの設定を継承",
-                        "読取専用sandbox", "昇格は不可(`never`)または本人承認(`on-request`)",
-                        "変更可能な外部ツールも無効化", "全書込の自動承認ではない",
-                        "git diff --no-index -- /dev/null <path>", "未commitの現在の本文の代わりに使わない",
-                        "条件を確認できなければ開始せず未完了", "技術的な書込拒否を実現しない")
+                        "指定が利用できない場合は勝手に別の値へ置き換えず未完了",
+                        "既存のsandbox・認証・承認設定を変更せず", "書込を許可する承認は行わない",
+                        "子agentにも同じモデル・推論量と共通レビュー方針を渡す",
+                        "読取の開始順序と手段は[AGENTS.md]", "全文読んで適用する",
+                        "独立した子agentを3人起動", "親は全結果を待つ", "会話履歴に依存しない入力",
+                        "委譲できない観点は未完了", "親による代行を独立レビューと数えない",
+                        "実際に確認できた値を区別して報告", "技術的な書込拒否を実現しない")
 
         # 実行 (Act)
         content = path.read_text(encoding="utf-8")
+        initial_read = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
 
         # 検証 (Assert)
         for requirement in requirements:
             self.assertIn(requirement, content)
+        self.assertIn(ROOT / ".ai-config/review/policy.md", resolved_links(path))
+        self.assertIn(ROOT / "AGENTS.md", resolved_links(path))
+        for requirement in ("最初の操作からshellをGit読取に限定", "git ls-files",
+                            "git diff --no-index -- /dev/null <path>",
+                            "git show HEAD:<path>`で現在本文を置き換えない"):
+            self.assertIn(requirement, initial_read)
+
+    def test_codex_start_allows_unverified_runtime_conditions(self):
+        """実効値の未確認を開始不可に戻さず、運用と保証の区別を保持する。"""
+        # 準備 (Arrange)
+        requirements = {
+            ".agents/review-runtime.md": ("親・子の実効モデル・推論量・sandboxや外部ツールの無効化",
+                                           "確認できないことだけを理由に開始を中止しない",
+                                           "確認できない値は未確認と報告",
+                                           "読取専用sandboxや外部変更ツールの無効化が保証されたとは扱わない",
+                                           "Codex組込みの子agentも利用でき",
+                                           "ネストしたCLI起動やOSによる書込拒否の実測は必須にしない"),
+            "AGENTS.md": ("実効条件の未確認だけを理由に開始を中止せず",),
+        }
+        removed_gates = ("条件を確認できなければ開始せず未完了",
+                         "書込拒否は実行側のread-only sandboxで別途強制",
+                         "実行条件を確認できない場合や独立した委譲ができない場合は、未完了")
+
+        # 実行 (Act)
+        contents = {name: (ROOT / name).read_text(encoding="utf-8") for name in requirements}
+
+        # 検証 (Assert)
+        for name, phrases in requirements.items():
+            with self.subTest(document=name):
+                for phrase in phrases:
+                    self.assertIn(phrase, contents[name])
+                for gate in removed_gates:
+                    self.assertNotIn(gate, contents[name])
 
     def test_shared_review_safety_contract_is_preserved(self):
         """リンク先が存在するだけで、秘密除外や未完了の条件欠落を見逃さない。"""

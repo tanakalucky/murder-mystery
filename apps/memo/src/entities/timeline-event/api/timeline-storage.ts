@@ -1,6 +1,5 @@
 import type { TimelineEvent } from "../model/types";
 
-/** 旧アプリ（Remix 版）と同じキー・同じ形で読み書きするので、保存済みのメモを引き継げる */
 export const TIMELINE_STORAGE_KEY = "timeline";
 
 export const loadTimelineEvents = (): TimelineEvent[] => {

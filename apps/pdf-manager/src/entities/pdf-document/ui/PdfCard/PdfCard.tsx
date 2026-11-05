@@ -6,18 +6,6 @@ interface Props {
   onOpen: () => void;
 }
 
-const Thumbnail = ({ thumbnail }: Pick<Props, "thumbnail">) => {
-  switch (thumbnail.status) {
-    case "ready":
-      // ファイル名はカード下部のテキストが読み上げるため、画像は装飾扱いにする
-      return <img src={thumbnail.url} alt="" className="size-full object-cover" />;
-    case "pending":
-      return <span className="text-[11px] text-muted-foreground">読み込み中…</span>;
-    case "failed":
-      return <span className="text-[11px] text-muted-foreground">プレビューなし</span>;
-  }
-};
-
 export const PdfCard = ({ name, thumbnail, onOpen }: Props) => {
   return (
     <button
@@ -35,4 +23,16 @@ export const PdfCard = ({ name, thumbnail, onOpen }: Props) => {
       </div>
     </button>
   );
+};
+
+const Thumbnail = ({ thumbnail }: Pick<Props, "thumbnail">) => {
+  switch (thumbnail.status) {
+    case "ready":
+      // ファイル名はカード下部のテキストが読み上げるため、画像は装飾扱いにする
+      return <img src={thumbnail.url} alt="" className="size-full object-cover" />;
+    case "pending":
+      return <span className="text-[11px] text-muted-foreground">読み込み中…</span>;
+    case "failed":
+      return <span className="text-[11px] text-muted-foreground">プレビューなし</span>;
+  }
 };

@@ -1,4 +1,5 @@
 import type { MasterKind, TimelineMasters } from "../model/types";
+
 import { timeInsertIndex } from "./compare-time";
 
 export const EMPTY_MASTERS: TimelineMasters = { players: [], locations: [], times: [] };
@@ -16,23 +17,13 @@ const LIST_KEY = {
   time: "times",
 } as const satisfies Record<MasterKind, keyof TimelineMasters>;
 
-export const listOf = (masters: TimelineMasters, kind: MasterKind): readonly string[] =>
-  masters[LIST_KEY[kind]];
+/** メモの登録に合わせてマスタを増やす。既にある値はそのまま */
+export const registerValues = (masters: TimelineMasters, values: MasterValues): TimelineMasters => {
+  let next = addValue(masters, "player", values.player ?? "");
+  next = addValue(next, "location", values.location ?? "");
 
-const withList = (
-  masters: TimelineMasters,
-  kind: MasterKind,
-  list: readonly string[],
-): TimelineMasters => ({ ...masters, [LIST_KEY[kind]]: list });
-
-const insert = (list: readonly string[], index: number, value: string): string[] => [
-  ...list.slice(0, index),
-  value,
-  ...list.slice(index),
-];
-
-const positionFor = (list: readonly string[], kind: MasterKind, value: string): number =>
-  kind === "time" ? timeInsertIndex(list, value) : list.length;
+  return addValue(next, "time", values.time ?? "");
+};
 
 /**
  * 登録済み・空文字なら何もしない。
@@ -106,10 +97,20 @@ export const moveValue = (
   return withList(masters, kind, moved);
 };
 
-/** メモの登録に合わせてマスタを増やす。既にある値はそのまま */
-export const registerValues = (masters: TimelineMasters, values: MasterValues): TimelineMasters => {
-  let next = addValue(masters, "player", values.player ?? "");
-  next = addValue(next, "location", values.location ?? "");
+export const listOf = (masters: TimelineMasters, kind: MasterKind): readonly string[] =>
+  masters[LIST_KEY[kind]];
 
-  return addValue(next, "time", values.time ?? "");
-};
+const withList = (
+  masters: TimelineMasters,
+  kind: MasterKind,
+  list: readonly string[],
+): TimelineMasters => ({ ...masters, [LIST_KEY[kind]]: list });
+
+const insert = (list: readonly string[], index: number, value: string): string[] => [
+  ...list.slice(0, index),
+  value,
+  ...list.slice(index),
+];
+
+const positionFor = (list: readonly string[], kind: MasterKind, value: string): number =>
+  kind === "time" ? timeInsertIndex(list, value) : list.length;

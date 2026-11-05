@@ -1,11 +1,8 @@
 import type { PdfDocument } from "../model/types";
 
 const PDF_MIME_TYPE = "application/pdf";
-const PDF_EXTENSION = ".pdf";
 
-const isPdfFile = (file: File): boolean => {
-  return file.type === PDF_MIME_TYPE || file.name.toLowerCase().endsWith(PDF_EXTENSION);
-};
+const PDF_EXTENSION = ".pdf";
 
 /**
  * アップロード/ドロップされたファイルから PDF だけを取り出し、追加順のメタデータを付与する。
@@ -20,4 +17,8 @@ export const createPdfDocuments = (files: readonly File[]): readonly PdfDocument
     addedAt: baseAddedAt + index,
     file,
   }));
+};
+
+const isPdfFile = (file: File): boolean => {
+  return file.type === PDF_MIME_TYPE || file.name.toLowerCase().endsWith(PDF_EXTENSION);
 };
