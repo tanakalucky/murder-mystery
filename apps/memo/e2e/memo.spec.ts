@@ -2,7 +2,7 @@ import { expect, test } from "playwright/test";
 
 test("メモを登録・編集し、再読み込み後も内容と記録順を保持する", async ({ page }) => {
   await page.goto("/memo");
-  const composer = page.getByRole("textbox", { name: "メモ", exact: true });
+  const composer = page.getByRole("combobox", { name: "メモ", exact: true });
   const notes = page.locator("ol > li");
 
   await composer.fill("@探偵 #食堂 >10:00 アリバイ確認");
@@ -16,7 +16,7 @@ test("メモを登録・編集し、再読み込み後も内容と記録順を�
   await expect(composer).toHaveValue("");
 
   await page.getByRole("button", { name: "1 件目のメモを編集" }).click();
-  const editor = page.getByRole("textbox", { name: "メモを編集", exact: true });
+  const editor = page.getByRole("combobox", { name: "メモを編集", exact: true });
   await expect(editor).toHaveValue("@探偵 #食堂 >10:00 アリバイ確認");
   await editor.fill("@執事 #書斎 >11:00 アリバイなし");
   await page.getByRole("button", { name: "保存", exact: true }).click();
@@ -56,7 +56,7 @@ test("ホームから設定・メモ・タイムテーブルへ移動し、戻�
   await expect(
     navigation.getByRole("link", { name: "タイムラインメモ", exact: true }),
   ).toHaveAttribute("aria-current", "page");
-  const composer = page.getByRole("textbox", { name: "メモ", exact: true });
+  const composer = page.getByRole("combobox", { name: "メモ", exact: true });
   await composer.fill("@探偵 #食堂 >10:00 設定から登録した人物のメモ");
   await page.getByRole("button", { name: "記録", exact: true }).click();
 
@@ -69,7 +69,7 @@ test("ホームから設定・メモ・タイムテーブルへ移動し、戻�
 
   await page.goBack();
   await expect(page).toHaveURL(/\/memo$/);
-  await expect(page.getByRole("textbox", { name: "メモ", exact: true })).toBeVisible();
+  await expect(page.getByRole("combobox", { name: "メモ", exact: true })).toBeVisible();
   await page.goForward();
   await expect(page).toHaveURL(/\/timetable$/);
   await page.reload();

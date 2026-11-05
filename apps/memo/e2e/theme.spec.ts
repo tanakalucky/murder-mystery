@@ -11,6 +11,7 @@ test("テーマを切り替え、再読み込み後も選択を保持する", as
   await expect(page.locator("html")).toHaveClass(/dark/);
   await page.getByRole("button", { name: "ライトモードに切り替え", exact: true }).click();
   await expect(page.locator("html")).toHaveClass(/light/);
+  await page.emulateMedia({ colorScheme: "dark" });
   await page.reload();
 
   await expect(page.locator("html")).toHaveClass(/light/);
