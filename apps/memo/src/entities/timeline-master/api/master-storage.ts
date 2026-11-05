@@ -2,10 +2,6 @@ import type { TimelineMasters } from "../model/types";
 
 export const MASTERS_STORAGE_KEY = "timeline_masters";
 
-const toStringList = (value: unknown): string[] =>
-  Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
-
-/** 未作成なら `null` を返す。空のマスタと区別が付かないと初回の移行が何度も走る */
 export const loadMasters = (): TimelineMasters | null => {
   try {
     const stored = localStorage.getItem(MASTERS_STORAGE_KEY);
@@ -26,7 +22,6 @@ export const loadMasters = (): TimelineMasters | null => {
   }
 };
 
-/** 空でもキーは残す。「作成済みで空」と「未作成」は別物 */
 export const saveMasters = (masters: TimelineMasters): void => {
   try {
     localStorage.setItem(MASTERS_STORAGE_KEY, JSON.stringify(masters));
@@ -34,3 +29,6 @@ export const saveMasters = (masters: TimelineMasters): void => {
     console.error("人物・場所・時刻の保存に失敗しました", error);
   }
 };
+
+const toStringList = (value: unknown): string[] =>
+  Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];

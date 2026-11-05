@@ -1,23 +1,25 @@
 import { clearMasters, useTimelineMasters } from "#/entities/timeline-master";
+
 import {
   deleteAllTimelineEvents,
   EventCard,
   formatEventText,
   useTimelineEvents,
 } from "#/entities/timeline-event";
+
 import { EventComposer, EventEditor } from "#/features/compose-timeline-event";
+
 import { DeleteAllButton } from "#/features/delete-all-data";
+
 import { Button } from "@repo/ui/components/button";
+
 import { Pencil } from "lucide-react";
+
 import { useState } from "react";
 
 import { submitMemo } from "../model/submit-memo";
-import { updateMemo } from "../model/update-memo";
 
-const deleteEverything = () => {
-  deleteAllTimelineEvents();
-  clearMasters();
-};
+import { updateMemo } from "../model/update-memo";
 
 export const MemoPage = () => {
   const events = useTimelineEvents();
@@ -136,4 +138,9 @@ export const MemoPage = () => {
       </div>
     </div>
   );
+};
+
+const deleteEverything = () => {
+  deleteAllTimelineEvents();
+  clearMasters();
 };

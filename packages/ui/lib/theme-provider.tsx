@@ -10,6 +10,7 @@ import {
 } from "react";
 
 type Theme = "dark" | "light" | "system";
+
 type ResolvedTheme = "dark" | "light";
 
 type ThemeProviderProps = {
@@ -27,21 +28,6 @@ type ThemeProviderState = {
 const COLOR_SCHEME_QUERY = "(prefers-color-scheme: dark)";
 
 const ThemeProviderContext = createContext<ThemeProviderState | undefined>(undefined);
-
-function isTheme(value: string | null): value is Theme {
-  return value === "dark" || value === "light" || value === "system";
-}
-
-/** The OS colour scheme is external state, so read it through a store instead of an effect. */
-function subscribeToSystemTheme(onChange: () => void) {
-  const media = window.matchMedia(COLOR_SCHEME_QUERY);
-  media.addEventListener("change", onChange);
-  return () => media.removeEventListener("change", onChange);
-}
-
-function getSystemTheme(): ResolvedTheme {
-  return window.matchMedia(COLOR_SCHEME_QUERY).matches ? "dark" : "light";
-}
 
 export function ThemeProvider({
   children,
@@ -95,4 +81,19 @@ export function useTheme() {
   if (context === undefined) throw new Error("useTheme must be used within a ThemeProvider");
 
   return context;
+}
+
+function isTheme(value: string | null): value is Theme {
+  return value === "dark" || value === "light" || value === "system";
+}
+
+/** The OS colour scheme is external state, so read it through a store instead of an effect. */
+function subscribeToSystemTheme(onChange: () => void) {
+  const media = window.matchMedia(COLOR_SCHEME_QUERY);
+  media.addEventListener("change", onChange);
+  return () => media.removeEventListener("change", onChange);
+}
+
+function getSystemTheme(): ResolvedTheme {
+  return window.matchMedia(COLOR_SCHEME_QUERY).matches ? "dark" : "light";
 }

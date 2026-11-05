@@ -3,9 +3,11 @@
 // oxlint-disable jsx-a11y/prefer-tag-over-role
 // oxlint-disable jsx-a11y/no-noninteractive-element-to-interactive-role
 import { type MasterKind, MASTER_PREFIX, type TimelineMasters } from "#/entities/timeline-master";
+
 import { type KeyboardEvent, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 
 import { applyMention, findMention, type Mention } from "../lib/find-mention";
+
 import { getTextareaCaretCoordinates } from "../lib/textarea-caret";
 
 interface Props {
@@ -34,37 +36,8 @@ interface Menu extends MenuAnchor {
   readonly items: readonly string[];
 }
 
-const candidatesFor = (masters: TimelineMasters, mention: Mention): readonly string[] => {
-  const pool: Record<MasterKind, readonly string[]> = {
-    player: masters.players,
-    location: masters.locations,
-    time: masters.times,
-  };
-  const query = mention.query.toLowerCase();
-
-  return pool[mention.kind].filter((item) => item.toLowerCase().includes(query));
-};
-
 const supportsPopover =
   typeof HTMLElement !== "undefined" && Object.hasOwn(HTMLElement.prototype, "popover");
-
-const anchorAtCaret = (textarea: HTMLTextAreaElement): MenuAnchor =>
-  getTextareaCaretCoordinates(textarea, textarea.selectionStart);
-
-/**
- * 中身の行数ちょうどの高さにする。1 行のメモに 3 行分の箱を出さないための調整で、
- * 上限は CSS の max-height が持つ（超えた分は入力欄の中でスクロールする）。
- */
-const autoResize = (textarea: HTMLTextAreaElement): void => {
-  // 空のときは placeholder の折り返しまで scrollHeight に入ってしまうので、測る間だけ外す
-  const { placeholder } = textarea;
-  textarea.placeholder = "";
-  textarea.style.height = "auto";
-  // border-box なので、内容の高さ（scrollHeight）に枠線の分を足さないと 1 行ぶん足りない
-  const borders = textarea.offsetHeight - textarea.clientHeight;
-  textarea.style.height = `${String(textarea.scrollHeight + borders)}px`;
-  textarea.placeholder = placeholder;
-};
 
 /**
  * `@人物` `#場所` `>時刻` の候補を出す入力欄。
@@ -270,4 +243,33 @@ export const MentionTextarea = ({
       )}
     </div>
   );
+};
+
+const candidatesFor = (masters: TimelineMasters, mention: Mention): readonly string[] => {
+  const pool: Record<MasterKind, readonly string[]> = {
+    player: masters.players,
+    location: masters.locations,
+    time: masters.times,
+  };
+  const query = mention.query.toLowerCase();
+
+  return pool[mention.kind].filter((item) => item.toLowerCase().includes(query));
+};
+
+const anchorAtCaret = (textarea: HTMLTextAreaElement): MenuAnchor =>
+  getTextareaCaretCoordinates(textarea, textarea.selectionStart);
+
+/**
+ * 中身の行数ちょうどの高さにする。1 行のメモに 3 行分の箱を出さないための調整で、
+ * 上限は CSS の max-height が持つ（超えた分は入力欄の中でスクロールする）。
+ */
+const autoResize = (textarea: HTMLTextAreaElement): void => {
+  // 空のときは placeholder の折り返しまで scrollHeight に入ってしまうので、測る間だけ外す
+  const { placeholder } = textarea;
+  textarea.placeholder = "";
+  textarea.style.height = "auto";
+  // border-box なので、内容の高さ（scrollHeight）に枠線の分を足さないと 1 行ぶん足りない
+  const borders = textarea.offsetHeight - textarea.clientHeight;
+  textarea.style.height = `${String(textarea.scrollHeight + borders)}px`;
+  textarea.placeholder = placeholder;
 };
