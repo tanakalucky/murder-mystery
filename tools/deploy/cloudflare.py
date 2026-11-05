@@ -251,15 +251,17 @@ def validate_preview_deployment(preview, deployment, number):
                 "workers/pull_request_number": str(number),
                 "workers/pull_request_url": f"https://github.com/{REPOSITORY}/pull/{number}",
                 "workers/tag": "murder-mystery-actions"}
+    # The deployment API omits Preview identity; read_preview scopes this GET by ID.
     if (not isinstance(preview.get("id"), str) or not preview["id"]
-            or deployment.get("preview_id") != preview["id"]
-            or deployment.get("preview_name") != f"pr-{number}"
+            or preview.get("name") != f"pr-{number}"
+            or not isinstance(annotations, dict)
             or any(annotations.get(key) != value for key, value in expected.items())):
         raise RuntimeError("Preview ownership metadata does not match this repository and PR")
-    bindings = deployment.get("env", {})
-    if (not isinstance(bindings, dict)
+    env = deployment.get("env", {})
+    bindings = deployment.get("bindings", [])
+    if (not isinstance(env, dict) or not isinstance(bindings, list)
             or any(not isinstance(binding, dict) or binding.get("type") != "assets"
-                   for binding in bindings.values()) or preview.get("tail_consumers")):
+                   for binding in [*env.values(), *bindings]) or preview.get("tail_consumers")):
         raise RuntimeError("Preview has non-assets bindings or tail consumers; refusing to inherit or delete them")
 
 
