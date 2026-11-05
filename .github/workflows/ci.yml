@@ -18,6 +18,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
 
       # Vite+ 本体・Node・pnpm のセットアップ、依存キャッシュ、`vp install` まで
       # まとめて行う（`run-install` の既定が true）。
@@ -25,6 +28,9 @@ jobs:
         with:
           node-version: "24"
           cache: true
+
+      - name: Test deployment guards
+        run: python3 -B -m unittest discover -s tools/deploy -v
 
       - name: Check
         run: vp check
@@ -54,3 +60,13 @@ jobs:
 
       - name: Build
         run: vp run -r build
+
+      - name: Save static assets for isolated deployment
+        uses: actions/upload-artifact@v4
+        with:
+          name: static-assets-${{ github.run_attempt }}
+          path: |
+            apps/memo/dist/
+            apps/pdf-manager/dist/
+          if-no-files-found: error
+          retention-days: 7
