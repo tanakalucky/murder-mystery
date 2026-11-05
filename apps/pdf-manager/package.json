@@ -19,7 +19,8 @@
     "dev": "vp dev",
     "preview": "vp preview",
     "test": "vp test",
-    "ui": "vpx shadcn@latest"
+    "ui": "vpx shadcn@latest",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@repo/ui": "workspace:*",

@@ -39,7 +39,7 @@ A Vite+ monorepo with React 19, Tailwind CSS v4 and shadcn/ui.
 vp run ready
 ```
 
-- Run the tests:
+- Run the Unit / Browser tests:
 
 ```bash
 vp run -r test
@@ -65,6 +65,37 @@ Browser テストは Playwright (Chromium) を使うので、初回だけブラ�
 ```bash
 vp -C apps/pdf-manager exec playwright install chromium
 ```
+
+## E2E テスト
+
+主要シナリオは各アプリ直下の `e2e/` に置く。Playwright Test がアプリをビルドし、
+ローカルの preview サーバーを起動して、実際のエントリーポイントと URL から操作する。
+コンポーネントの直接描画、アプリ内ストアへのデータ投入、PDF サムネイルのモックは行わない。
+
+| 置き場                  | シナリオ                                                                                                 |
+| ----------------------- | -------------------------------------------------------------------------------------------------------- |
+| `apps/memo/e2e/`        | メモの登録・編集・キャンセル・再読み込み後の保存、設定・タイムテーブルへの移動、戻る・進む、テーマの保持 |
+| `apps/pdf-manager/e2e/` | 実際の PDF の追加・サムネイル生成・表示切替・前後移動・再読み込み後の復元、テーマの保持                  |
+
+```bash
+vp run test:e2e                       # 両アプリ
+vp -C apps/memo run --no-cache test:e2e           # メモだけ
+vp -C apps/pdf-manager run --no-cache test:e2e    # PDF Manager だけ
+```
+
+初回の Chromium 取得は上記の `playwright install chromium` を使う。
+サーバーには `127.0.0.1:4173`（メモ）と `127.0.0.1:4174`（PDF Manager）を使うため、
+この2ポートを空けておく。既存のサーバーは再利用せず、Playwright が起動・終了を管理する。
+各テストのブラウザコンテキストを分け、localStorage / IndexedDB のデータを隔離する。
+PDF の fixture はテスト用に作った1ページの文書で、実ユーザーの情報は含まない。
+ブラウザ内蔵 PDF ビューアの描画やスクロール位置そのものは自動検証の対象外とする。
+
+失敗時のスクリーンショットと trace は各アプリの `test-results/` に残す（Git 管理対象外）。
+CI の失敗時は `e2e-results` artifact として7日間保存する。
+
+Unit テストと、IndexedDB・候補入力・レイアウト・iframe の再利用などを詳しく確認する
+Browser テストは、従来どおり対象コードの隣に残す。E2E の `*.spec.ts` は Vitest の対象に含めない。
+`vp run ready` と CI は Unit / Browser と E2E の両方を実行する。
 
 ## apps/pdf-manager (PDF Manager)
 
@@ -174,7 +205,8 @@ localStorage のキーは 2 つ。メモは `timeline`、人物・場所・時�
 ### テスト
 
 pdf-manager と同じ 2 種類。ロジック（メモの解析・並び順の決定・表の組み立て）は Unit テストで、
-入力欄と候補メニュー・メモの書き直し・設定画面の挙動は Browser テストで確かめる。
+入力欄と候補メニュー・設定画面の細かな挙動は Browser テストで確かめる。
+主要な利用者操作は上記の E2E テストで確かめる。
 
 ```bash
 vp -C apps/memo test
