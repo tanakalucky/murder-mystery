@@ -288,11 +288,13 @@ class PreviewBoundaryTests(IsolatedTestCase):
         self.assertEqual(request.call_args.args, ("memo", preview["id"]))
         self.assertEqual(request.call_args.kwargs, {"suffix": "/deployments/latest"})
 
-    def test_API読取は検証済みPreviewとdeploymentを返す(self):
+    def test_API読取は所属fieldのない実deployment形式を検証する(self):
         preview, deployment = preview_payload()
         with patch.object(deploy, "cloudflare_request", side_effect=[preview, deployment]) as request:
             result = deploy.read_preview("memo", PR_NUMBER)
 
+        self.assertNotIn("preview_id", deployment)
+        self.assertNotIn("preview_name", deployment)
         self.assertEqual(result, (preview, deployment))
         self.assertEqual(request.call_args_list, [
             call("memo", f"pr-{PR_NUMBER}", allow_missing=True),
@@ -306,11 +308,10 @@ class PreviewBoundaryTests(IsolatedTestCase):
         self.assertIsNone(result)
         request.assert_called_once_with("memo", f"pr-{PR_NUMBER}", allow_missing=True)
 
-    def test_PreviewとdeploymentのIDが共に欠落または空なら拒否する(self):
+    def test_PreviewのIDが欠落または空なら拒否する(self):
         for identifier in (None, "", 0):
             preview, deployment = preview_payload()
             preview["id"] = identifier
-            deployment["preview_id"] = identifier
 
             with self.subTest(identifier=identifier), self.assertRaises(RuntimeError):
                 deploy.validate_preview_deployment(preview, deployment, PR_NUMBER)
@@ -323,6 +324,52 @@ class PreviewBoundaryTests(IsolatedTestCase):
             changed["annotations"][key] = "different"
             with self.subTest(key=key), self.assertRaises(RuntimeError):
                 deploy.validate_preview_deployment(preview, changed, PR_NUMBER)
+
+    def test_所有annotationは各項目の欠落を拒否する(self):
+        preview, deployment = preview_payload()
+        for key in ("workers/repository_url", "workers/pull_request_number",
+                    "workers/pull_request_url", "workers/tag"):
+            changed = copy.deepcopy(deployment)
+            del changed["annotations"][key]
+
+            with self.subTest(key=key), self.assertRaises(RuntimeError):
+                deploy.validate_preview_deployment(preview, changed, PR_NUMBER)
+
+    def test_所有annotationの欠落や不正shapeを拒否する(self):
+        preview, deployment = preview_payload()
+        del deployment["annotations"]
+        with self.assertRaises(RuntimeError):
+            deploy.validate_preview_deployment(preview, deployment, PR_NUMBER)
+
+        for annotations in (None, [], "owned", 1):
+            deployment["annotations"] = annotations
+
+            with self.subTest(annotations=annotations), self.assertRaises(RuntimeError):
+                deploy.validate_preview_deployment(preview, deployment, PR_NUMBER)
+
+    def test_所有不一致や危険bindingは更新削除より前に拒否する(self):
+        runner = deploy.Deployer(ROOT, Mock())
+        for field, value in (("annotations", {}),
+                             ("env", {"SECRET": {"type": "secret_text"}}),
+                             ("bindings", [{"name": "SECRET", "type": "secret_text"}])):
+            preview, deployment = preview_payload()
+            deployment[field] = value
+            for operation in ("preview", "cleanup"):
+                with self.subTest(field=field, operation=operation), \
+                        patch.object(deploy, "cloudflare_request",
+                                     side_effect=[preview, deployment]) as request, \
+                        patch.object(runner, "wrangler") as cli:
+                    with self.assertRaises(RuntimeError):
+                        if operation == "preview":
+                            runner.preview("memo", PR_NUMBER, Path("/assets"), HEAD)
+                        else:
+                            runner.cleanup("memo", PR_NUMBER)
+
+                    cli.assert_not_called()
+                    self.assertEqual(request.call_args_list, [
+                        call("memo", f"pr-{PR_NUMBER}", allow_missing=True),
+                        call("memo", preview["id"], suffix="/deployments/latest"),
+                    ])
 
     def test_secretや本番資源を継承する既存Previewを拒否する(self):
         preview, deployment = preview_payload()
@@ -341,6 +388,31 @@ class PreviewBoundaryTests(IsolatedTestCase):
         for bindings in (None, [], {"BROKEN": None}, {"BROKEN": []}):
             deployment["env"] = bindings
             with self.subTest(bindings=bindings), self.assertRaises(RuntimeError):
+                deploy.validate_preview_deployment(preview, deployment, PR_NUMBER)
+
+    def test_bindings配列もassetsのみ許可し危険型や不正shapeを拒否する(self):
+        preview, deployment = preview_payload()
+        deployment["bindings"] = [{"name": "ASSETS", "type": "assets"}]
+        deploy.validate_preview_deployment(preview, deployment, PR_NUMBER)
+
+        for bindings in (None, {}, "assets", [None], [[]], [{}],
+                         *[[{"name": "TEST", "type": kind}] for kind in
+                           ("secret_text", "plain_text", "json", "inherit", "kv_namespace",
+                            "r2_bucket", "d1", "service")]):
+            deployment["bindings"] = bindings
+
+            with self.subTest(bindings=bindings), self.assertRaises(RuntimeError):
+                deploy.validate_preview_deployment(preview, deployment, PR_NUMBER)
+
+    def test_envとbindingsの片方だけが危険でも拒否する(self):
+        preview, deployment = preview_payload()
+        for env, bindings in (({"ASSETS": {"type": "assets"}},
+                               [{"name": "SECRET", "type": "secret_text"}]),
+                              ({"SECRET": {"type": "secret_text"}},
+                               [{"name": "ASSETS", "type": "assets"}])):
+            deployment.update(env=env, bindings=bindings)
+
+            with self.subTest(env=env, bindings=bindings), self.assertRaises(RuntimeError):
                 deploy.validate_preview_deployment(preview, deployment, PR_NUMBER)
 
     def test_tail_consumerのあるPreviewを拒否する(self):
@@ -498,8 +570,6 @@ class PreviewBoundaryTests(IsolatedTestCase):
             (("preview", "id"), None),
             (("preview", "id"), ""),
             (("preview", "id"), 27),
-            (("deployment", "preview_id"), "different-preview-id"),
-            (("deployment", "preview_name"), "pr-28"),
             (("deployment", "annotations", "workers/commit_sha"), NEXT_HEAD),
             (("deployment", "annotations", "workers/commit_sha"), None),
             (("deployment", "annotations", "workers/tag"), "unmanaged"),
@@ -821,8 +891,8 @@ def reconciliation_fakes(states):
 
 def preview_payload():
     preview = {"id": "preview-id", "name": f"pr-{PR_NUMBER}"}
-    deployment = {"preview_id": preview["id"], "preview_name": preview["name"],
-                  "annotations": {"workers/repository_url": f"https://github.com/{deploy.REPOSITORY}",
+    # GET deployments/latest returns deployment metadata without preview_id/name.
+    deployment = {"annotations": {"workers/repository_url": f"https://github.com/{deploy.REPOSITORY}",
                                   "workers/pull_request_number": str(PR_NUMBER),
                                   "workers/pull_request_url": f"https://github.com/{deploy.REPOSITORY}/pull/{PR_NUMBER}",
                                   "workers/tag": "murder-mystery-actions", "workers/commit_sha": HEAD}}
