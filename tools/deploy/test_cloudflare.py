@@ -10,7 +10,7 @@ import stat
 import subprocess
 import tempfile
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, call, patch
 import urllib.error
 import urllib.request
 import warnings
@@ -288,6 +288,24 @@ class PreviewBoundaryTests(IsolatedTestCase):
         self.assertEqual(request.call_args.args, ("memo", preview["id"]))
         self.assertEqual(request.call_args.kwargs, {"suffix": "/deployments/latest"})
 
+    def test_API読取は検証済みPreviewとdeploymentを返す(self):
+        preview, deployment = preview_payload()
+        with patch.object(deploy, "cloudflare_request", side_effect=[preview, deployment]) as request:
+            result = deploy.read_preview("memo", PR_NUMBER)
+
+        self.assertEqual(result, (preview, deployment))
+        self.assertEqual(request.call_args_list, [
+            call("memo", f"pr-{PR_NUMBER}", allow_missing=True),
+            call("memo", preview["id"], suffix="/deployments/latest"),
+        ])
+
+    def test_API読取は不存在ならdeploymentを取得しない(self):
+        with patch.object(deploy, "cloudflare_request", return_value=None) as request:
+            result = deploy.read_preview("memo", PR_NUMBER)
+
+        self.assertIsNone(result)
+        request.assert_called_once_with("memo", f"pr-{PR_NUMBER}", allow_missing=True)
+
     def test_PreviewとdeploymentのIDが共に欠落または空なら拒否する(self):
         for identifier in (None, "", 0):
             preview, deployment = preview_payload()
@@ -421,19 +439,20 @@ class PreviewBoundaryTests(IsolatedTestCase):
         runner = deploy.Deployer(ROOT, Mock())
         preview, deployment = preview_payload()
         preview["urls"] = ["https://pr-27-memo.example.workers.dev/"]
-        output = json.dumps({"preview": preview, "deployment": deployment})
         captured = {}
 
         def fake_cli(app, arguments, extra_env=None):
             captured.update(app=app, arguments=arguments, env=extra_env,
                             config=json.loads(Path(arguments[arguments.index("--config") + 1]).read_text()))
-            return output
+            return "Asset upload complete\n"
 
         with patch.object(deploy, "check_existing_preview", return_value=None), \
+                patch.object(deploy, "read_preview", return_value=(preview, deployment)) as read, \
                 patch.object(runner, "wrangler", side_effect=fake_cli):
             url = runner.preview("memo", PR_NUMBER, Path("/assets"), HEAD)
 
         self.assertEqual(url, preview["urls"][0])
+        read.assert_called_once_with("memo", PR_NUMBER)
         self.assertEqual(captured["arguments"][0], "preview")
         self.assertIn("--ignore-base-config", captured["arguments"])
         self.assertIn("--json", captured["arguments"])
@@ -442,20 +461,114 @@ class PreviewBoundaryTests(IsolatedTestCase):
         self.assertEqual(captured["config"]["name"], "memo")
         self.assertNotIn("routes", captured["config"])
 
-    def test_CLI出力にURLや一致するSHAがなければ成功扱いしない(self):
+    def test_CLIの進捗付きJSONや空出力でもAPI検証できれば成功する(self):
         runner = deploy.Deployer(ROOT, Mock())
         preview, deployment = preview_payload()
-        outputs = [{"preview": preview, "deployment": deployment}]
-        wrong = copy.deepcopy(outputs[0])
-        wrong["preview"]["urls"] = ["https://preview.workers.dev"]
-        wrong["deployment"]["annotations"]["workers/commit_sha"] = NEXT_HEAD
-        outputs.append(wrong)
+        preview["urls"] = ["https://pr-27-memo.example.workers.dev/"]
+        output = json.dumps({"preview": preview, "deployment": deployment})
+        for stdout in ("Uploading assets...\nUploaded 2 files\n" + output, "", "arbitrary output", output):
+            with self.subTest(stdout=stdout), \
+                    patch.object(deploy, "check_existing_preview", return_value=None) as preflight, \
+                    patch.object(runner, "wrangler", return_value=stdout) as cli, \
+                    patch.object(deploy, "cloudflare_request", side_effect=[preview, deployment]) as request:
+                operations = Mock()
+                operations.attach_mock(preflight, "preflight")
+                operations.attach_mock(cli, "cli")
+                operations.attach_mock(request, "api")
 
-        for output in outputs:
-            with self.subTest(output=output), patch.object(deploy, "check_existing_preview", return_value=None), \
-                    patch.object(runner, "wrangler", return_value=json.dumps(output)), \
-                    self.assertRaises(RuntimeError):
+                url = runner.preview("memo", PR_NUMBER, Path("/assets"), HEAD)
+
+                self.assertEqual(url, preview["urls"][0])
+                cli.assert_called_once()
+                preflight.assert_called_once_with("memo", PR_NUMBER)
+                self.assertEqual([operation[0] for operation in operations.mock_calls],
+                                 ["preflight", "cli", "api", "api"])
+                self.assertEqual(request.call_args_list, [
+                    call("memo", f"pr-{PR_NUMBER}", allow_missing=True),
+                    call("memo", preview["id"], suffix="/deployments/latest"),
+                ])
+
+    def test_APIの不正なPreviewはCLI出力が正常でも成功扱いせず再実行しない(self):
+        runner = deploy.Deployer(ROOT, Mock())
+        preview, deployment = preview_payload()
+        preview["urls"] = ["https://pr-27-memo.example.workers.dev/"]
+        valid = {"preview": preview, "deployment": deployment}
+        invalid_fields = [
+            (("preview", "name"), "pr-28"),
+            (("preview", "id"), None),
+            (("preview", "id"), ""),
+            (("preview", "id"), 27),
+            (("deployment", "preview_id"), "different-preview-id"),
+            (("deployment", "preview_name"), "pr-28"),
+            (("deployment", "annotations", "workers/commit_sha"), NEXT_HEAD),
+            (("deployment", "annotations", "workers/commit_sha"), None),
+            (("deployment", "annotations", "workers/tag"), "unmanaged"),
+            (("deployment", "annotations", "workers/repository_url"), "https://github.com/other/repo"),
+            (("deployment", "annotations", "workers/pull_request_number"), "28"),
+            (("deployment", "annotations", "workers/pull_request_url"),
+             f"https://github.com/{deploy.REPOSITORY}/pull/28"),
+            (("deployment", "env"), {"SECRET": {"type": "secret_text"}}),
+            (("preview", "tail_consumers"), [{"service": "production-observer"}]),
+            (("preview", "urls"), []),
+            (("preview", "urls"), ["https://example.com/"]),
+            (("preview", "urls"), ["http://preview.workers.dev"]),
+            (("preview", "urls"), ["https://user:pass@preview.workers.dev"]),
+        ]
+        for path, value in invalid_fields:
+            changed = copy.deepcopy(valid)
+            set_nested(changed, path, value)
+            with self.subTest(path=path, value=value), \
+                    patch.object(deploy, "check_existing_preview", return_value=None), \
+                    patch.object(runner, "wrangler", return_value=json.dumps(valid)) as cli, \
+                    patch.object(deploy, "cloudflare_request",
+                                 side_effect=[changed["preview"], changed["deployment"]]) as request:
+                with self.assertRaises(RuntimeError):
+                    runner.preview("memo", PR_NUMBER, Path("/assets"), HEAD)
+
+                cli.assert_called_once()
+                self.assertEqual(request.call_count, 1 if path in (
+                    ("preview", "name"), ("preview", "id")) else 2)
+                self.assertTrue(all("method" not in item.kwargs for item in request.call_args_list))
+
+    def test_APIで作成結果が見つからなくてもCLIを再実行しない(self):
+        runner = deploy.Deployer(ROOT, Mock())
+        with patch.object(deploy, "check_existing_preview", return_value=None), \
+                patch.object(runner, "wrangler", return_value="Uploaded assets") as cli, \
+                patch.object(deploy, "cloudflare_request", return_value=None) as request:
+            with self.assertRaises(RuntimeError):
                 runner.preview("memo", PR_NUMBER, Path("/assets"), HEAD)
+
+        cli.assert_called_once()
+        request.assert_called_once_with("memo", f"pr-{PR_NUMBER}", allow_missing=True)
+
+    def test_API検証の通信失敗を不存在扱いせずCLIを再実行しない(self):
+        runner = deploy.Deployer(ROOT, Mock())
+        error = urllib.error.URLError("verification unavailable")
+        with patch.object(deploy, "check_existing_preview", return_value=None), \
+                patch.object(runner, "wrangler", return_value="Uploaded assets") as cli, \
+                patch.object(deploy, "cloudflare_request", side_effect=error) as request:
+            with self.assertRaises(urllib.error.URLError) as caught:
+                runner.preview("memo", PR_NUMBER, Path("/assets"), HEAD)
+
+        self.assertIs(caught.exception, error)
+        cli.assert_called_once()
+        request.assert_called_once_with("memo", f"pr-{PR_NUMBER}", allow_missing=True)
+
+    def test_CLI例外は結果不明のまま伝播し再実行や削除をしない(self):
+        runner = deploy.Deployer(ROOT, Mock())
+        error = subprocess.CalledProcessError(1, ["wrangler", "preview"], output="Uploaded assets")
+        with patch.object(deploy, "check_existing_preview", return_value=None) as preflight, \
+                patch.object(runner, "wrangler", side_effect=error) as cli, \
+                patch.object(deploy, "read_preview") as read, \
+                patch.object(deploy, "cloudflare_request") as request:
+            with self.assertRaises(subprocess.CalledProcessError) as caught:
+                runner.preview("memo", PR_NUMBER, Path("/assets"), HEAD)
+
+        self.assertIs(caught.exception, error)
+        preflight.assert_called_once_with("memo", PR_NUMBER)
+        cli.assert_called_once()
+        read.assert_not_called()
+        request.assert_not_called()
 
     def test_CLIは固定バージョンだけを許可しshellを使わない(self):
         runner = deploy.Deployer(ROOT, Mock())
