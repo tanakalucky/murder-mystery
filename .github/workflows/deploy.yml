@@ -1,167 +1,47 @@
-name: Deploy
+name: Production
 
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
   workflow_dispatch:
 
-# 本番デプロイは打ち切らない。プレビューは新しい push で置き換える。
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+permissions: {}
 
-permissions:
-  contents: read
+concurrency:
+  group: production-${{ github.repository_id }}
+  cancel-in-progress: false
 
 jobs:
-  targets:
-    name: Select the apps to deploy
-    runs-on: ubuntu-latest
-    outputs:
-      apps: ${{ steps.select.outputs.apps }}
-
-    steps:
-      - uses: actions/checkout@v7.0.1
-
-      # デプロイ対象は `wrangler.jsonc` を持つ apps/ 配下のパッケージ。アプリを
-      # 追加してもこのワークフローは変わらない。
-      #
-      # 3 つ目のアプリが入ったら、ここを
-      #   pnpm --filter "...[<base>]" list --depth -1 --json
-      # に差し替えて、変更されたパッケージとその波及先だけに絞る。pnpm が依存
-      # グラフから波及先を出すので、依存関係をこのファイルに書く必要はない。
-      - name: Select the apps
-        id: select
-        shell: bash
-        run: |
-          apps=$(
-            for config in apps/*/wrangler.jsonc; do
-              [ -e "$config" ] || continue
-              dirname "$config"
-            done |
-              sort |
-              python3 -c 'import json, sys; print(json.dumps([line.strip() for line in sys.stdin if line.strip()]))'
-          )
-          echo "apps=$apps" >> "$GITHUB_OUTPUT"
-          echo "Selected: $apps"
-
   deploy:
-    name: ${{ matrix.app }}
-    needs: targets
     if: >-
-      needs.targets.outputs.apps != '[]' &&
-      (github.event_name != 'pull_request' ||
-       github.event.pull_request.head.repo.full_name == github.repository)
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_repository.id == github.event.repository.id) ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
-    environment: ${{ github.event_name == 'pull_request' && 'preview' || 'production' }}
-
-    strategy:
-      # 1 つのアプリのデプロイ失敗で、他のアプリを巻き添えにしない
-      fail-fast: false
-      matrix:
-        app: ${{ fromJson(needs.targets.outputs.apps) }}
-
+    timeout-minutes: 20
+    environment: production
+    permissions:
+      contents: read
+      actions: read
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
 
-      # Vite+ 本体・Node・pnpm のセットアップ、依存キャッシュ、`vp install` まで
-      # まとめて行う（`run-install` の既定が true）。
       - uses: voidzero-dev/setup-vp@v1.19.0
         with:
           node-version: "24"
-          cache: true
+          cache: false
 
-      - name: Build
-        run: vp -C "${{ matrix.app }}" build
-
-      # Worker 名はアプリの wrangler.jsonc から引く。JSONC なのでコメントと末尾の
-      # カンマを、文字列の中身には触れずに取り除いてから読む。
-      # プレビュー URL のホスト名は 63 文字までなので、Worker 名と区切りの "-" を
-      # 引いた残りが別名に使える長さになる。
-      - name: Derive the preview alias
-        if: github.event_name == 'pull_request'
-        id: alias
-        shell: bash
+      - name: Deploy successful CI assets for current main
+        run: python3 -B tools/deploy/cloudflare.py production
         env:
-          APP: ${{ matrix.app }}
-          BRANCH: ${{ github.head_ref }}
-        run: |
-          worker=$(
-            python3 - "$APP" <<'PY'
-          import json, os, re, sys
-
-          text = open(os.path.join(sys.argv[1], "wrangler.jsonc"), encoding="utf-8").read()
-          # 文字列はそのまま残し、それ以外のコメントと末尾のカンマだけを消す
-          string = r'("(?:\\.|[^"\\])*")'
-          text = re.sub(string + r"|//[^\n]*|/\*.*?\*/", lambda m: m.group(1) or "", text, flags=re.S)
-          text = re.sub(string + r"|,(?=\s*[}\]])", lambda m: m.group(1) or "", text)
-          print(json.loads(text)["name"])
-          PY
-          )
-          budget=$((63 - ${#worker} - 1))
-          alias=$(
-            printf '%s' "$BRANCH" |
-              sed 's|^[^/]*/||' |
-              tr '[:upper:]' '[:lower:]' |
-              sed 's|[^a-z0-9]|-|g' |
-              cut -c "1-$budget"
-          )
-          echo "worker=$worker" >> "$GITHUB_OUTPUT"
-          echo "value=${alias%-}" >> "$GITHUB_OUTPUT"
-
-      # ワークスペースの wrangler をそのまま使う。wrangler はアプリの wrangler.jsonc を
-      # 読むので、Worker 名やバインディングはアプリ側の設定だけで決まる。
-      - name: Deploy
-        shell: bash
-        env:
+          GH_TOKEN: ${{ github.token }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          APP: ${{ matrix.app }}
-          ALIAS: ${{ steps.alias.outputs.value }}
-          WORKER: ${{ steps.alias.outputs.worker }}
-        run: |
-          set -euo pipefail
-
-          summarize() {
-            # pipefail を有効にしているので、URL が無いときの grep の失敗は握りつぶす
-            url=$(grep -oE 'https://[A-Za-z0-9.-]+\.workers\.dev' deploy.log | tail -1 || true)
-            {
-              echo "### $1"
-              echo
-              if [ -n "$url" ]; then
-                echo "$url"
-              else
-                echo "URL をログから読み取れませんでした。上のステップのログを確認してください。"
-              fi
-            } >> "$GITHUB_STEP_SUMMARY"
-          }
-
-          if [ "${{ github.event_name }}" != "pull_request" ]; then
-            vp -C "$APP" exec wrangler deploy
-            exit 0
-          fi
-
-          # `versions upload` は既にある Worker にバージョンを載せるだけで、Worker 自体は
-          # 作れない。初めてデプロイするアプリの PR では先に `deploy` して Worker を作る。
-          status=$(
-            curl -sS -o /dev/null -w '%{http_code}' \
-              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-              "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER"
-          )
-
-          # 既にある Worker は 200 とは限らない（本文を返さず 204 になることがある）
-          case "$status" in
-            2??)
-              vp -C "$APP" exec wrangler versions upload --preview-alias "$ALIAS" | tee deploy.log
-              summarize "$APP のプレビュー \`$ALIAS\`"
-              ;;
-            404)
-              vp -C "$APP" exec wrangler deploy | tee deploy.log
-              summarize "$APP の Worker \`$WORKER\` を新規作成しました（プレビューは次の push から）"
-              ;;
-            *)
-              echo "Worker の存在確認に失敗しました (HTTP $status)" >&2
-              exit 1
-              ;;
-          esac
+          WRANGLER_SEND_METRICS: "false"

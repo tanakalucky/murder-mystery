@@ -185,33 +185,56 @@ pdf-manager と同じ 2 種類。ロジック（メモの解析・並び順の�
 vp -C apps/memo test
 ```
 
-## CI
+## CI と Cloudflare 配信
 
-ワークフローは 2 本だけで、どちらもアプリが増えても書き換えない。
+| Workflow      | 契機                                  | 内容                                                           |
+| ------------- | ------------------------------------- | -------------------------------------------------------------- |
+| `ci.yml`      | PR / main への push                   | 検査・テスト・ビルドを行い、2アプリの静的成果物を7日間保存する |
+| `preview.yml` | PR の CI 成功 / PR close / 手動       | 最新の `pr-番号` を作成・更新し、close では削除する            |
+| `deploy.yml`  | main の CI 成功 / main からの手動実行 | 最新 main の成功した CI 成果物だけを本番へ配信する             |
 
-| ファイル                       | トリガー                   | 内容                                                         |
-| ------------------------------ | -------------------------- | ------------------------------------------------------------ |
-| `.github/workflows/ci.yml`     | PR / main への push        | `vp check` → `vp run -r test` → `vp run -r build`            |
-| `.github/workflows/deploy.yml` | main への push / PR / 手動 | 対象アプリを matrix で回し、push なら本番、PR ならプレビュー |
+プレビューは [Worker Previews](https://developers.cloudflare.com/workers/previews/get-started/) を使う。
+`memo` と `pdf-manager` の各 Worker 配下に同じ `pr-番号` を作り、成功した URL と commit SHA を
+Actions の summary に残す。PR コメントへの書込権限は使わない。
+Wrangler は `4.149.0` に固定し、両アプリの `previews: {}` で専用 bindings を空にしている。
+本番の Worker 名・Custom Domain・保存形式は変更しない。
 
-- CI の 3 コマンドはすべてワークスペース全体が対象なので、アプリ単位のジョブは要らない。
-- `deploy.yml` は `wrangler.jsonc` を持つ `apps/*` を列挙して matrix に流す。Worker 名や
-  バインディングはアプリ側の `wrangler.jsonc` にあり、ワークフローには出てこない。
-  **アプリを増やすときにやることは `apps/` にディレクトリを作ることだけ。**
-- プレビューの別名はブランチ名から作る。長さの上限は、アプリの `wrangler.jsonc` の Worker 名から
-  アプリごとに計算する（ホスト名の 63 文字から Worker 名と区切りを引いた残り）。
-- プレビューに使う `wrangler versions upload` は既にある Worker にバージョンを載せるだけで、
-  Worker 自体は作れない。そのため PR ではデプロイ前に Cloudflare API へ Worker の有無を
-  問い合わせ、無ければ `wrangler deploy` で作る。新しいアプリの 1 回目だけこの経路を通り、
-  2 回目以降は通常どおりプレビューになる。
-- アプリが 3 つを超えたら、`deploy.yml` の `targets` ジョブを
-  `pnpm --filter "...[<base>]" list --depth -1 --json` に差し替えて、変更されたパッケージと
-  その波及先だけに絞る。pnpm が依存グラフから波及先を出すので、依存関係を YAML に書く必要はない。
+### 信頼境界と設定
 
-`CLOUDFLARE_API_TOKEN` と `CLOUDFLARE_ACCOUNT_ID` をリポジトリの Secrets に登録しておくこと。
-各アプリは `wrangler.jsonc` の `routes` で `tanakalucky.com` のサブドメインに Custom Domain として
-紐づき、デプロイ時に DNS レコードと証明書が作られる。そのためトークンには Workers の編集権限に加えて、
-`tanakalucky.com` ゾーンの DNS 編集権限も要る。
+- CI には Cloudflare の秘密を渡さない。配信 job は `main` のコード・依存・設定だけを使い、
+  PR の実行コード、設定、install hook は実行しない。取得する ZIP は成功した CI の repo・workflow・
+  run・attempt・head SHA を照合し、対象を `memo/dist/` と `pdf-manager/dist/` の通常ファイルに限定する。
+- Preview は本人が作成した同一リポジトリの main 向け PR に限定する。配信・削除前に現在の PR 状態を
+  読み直し、古い head の配信や reopen 後の削除を抑える。本番は別の concurrency で直列化する。
+- Preview では trusted な静的配信設定を生成し、本番 routes・vars・Secrets・bindings・build hook を渡さない。
+  `--ignore-base-config` で Dashboard の base config も取り込まない。既存 Preview は repo・PR・管理タグと
+  assets 以外の bindings がないことを確認し、不明なものは上書き・削除しない。
+- 必要な Secrets は `CLOUDFLARE_API_TOKEN` と `CLOUDFLARE_ACCOUNT_ID`。
+  `preview` / `production` の GitHub Environment に用途別の値を設定できる。値はリポジトリに保存しない。
+  Preview の token には対象 account の Workers Scripts Edit が必要で、DNS 編集は不要。
+  本番は既存 Custom Domain を扱う権限を維持する。権限・Secrets・Cloudflare の公開設定は自動変更しない。
+- GitHub token は `contents: read` と `actions: read`、Preview だけ `pull-requests: read` を使う。
+  Cloudflare token 自体に本番操作能力がないことまでは保証しない。信頼済み配信コードと build の分離で守る。
+
+### 復旧と運用
+
+`Preview` の手動実行を main から選び、PR 番号を指定すると現在の状態へ再照合する。
+open なら現在 head の成功 CI、closed なら当該 PR の2つの Preview だけを対象とする。
+CI が失敗中・成果物が期限切れなら CI を再実行する。状態が頻繁に変わる場合も手動実行で復旧できる。
+
+親 Worker が存在しない、Preview URL が無効、既存 Preview の所有情報や bindings が合わない場合は停止する。
+本番への `wrangler deploy` や親 Worker の削除に切り替える fallback はない。
+Preview URL の公開設定は [Cloudflare の設定](https://developers.cloudflare.com/workers/previews/custom-domains/) を確認する。
+古い `versions upload` のプレビューや、本方式で作っていない資源は自動削除しない。
+
+この構成は Static Assets のみを対象とする。サーバー処理や KV/D1/R2 等を追加する場合は、
+Preview の資源分離を改めて設計する。外部から同時に Cloudflare 設定を変更した場合の原子的な隔離は保証しない。
+
+配信処理のローカルテストは外部サービスを使わず実行できる。
+
+```bash
+python3 -B -m unittest discover -s tools/deploy -v
+```
 
 ## shadcn/ui
 
